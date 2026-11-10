@@ -25,6 +25,11 @@ export function runCheck(check: CheckSpec, f: PageFacts): { pass: boolean; evide
         : { pass: false, evidence: `Found ${n} ${label}${n === 1 ? '' : 's'}, needed at least ${min}.` };
     }
     case 'mobile_no_horizontal_scroll':
+      // Without a viewport meta tag, phones lay the page out at ~980px and shrink it, so it never "overflows"
+      // in the DOM but is not mobile ready. Found by the evaluation on the v1 demo page.
+      if (!f.viewportMeta) {
+        return { pass: false, evidence: 'No viewport meta tag: phones lay the page out at desktop width and shrink it, so it does not fit a 390px screen.' };
+      }
       return f.mobileOverflowPx <= 2
         ? { pass: true, evidence: 'At 390px width the page fits the screen with no sideways scrolling.' }
         : { pass: false, evidence: `At 390px width the page is ${f.mobileOverflowPx}px wider than the screen, so it scrolls sideways.` };

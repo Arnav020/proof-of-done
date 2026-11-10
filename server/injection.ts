@@ -15,7 +15,9 @@ export type InjectionResult = {
 export const PATTERNS: RegExp[] = [
   /\b(ignore|disregard|forget)\b.{0,40}\b(previous|prior|above|earlier|all)\b.{0,20}\b(instructions?|rules?|prompts?)\b/i,
   /\b(mark|set|report|treat|consider)\b.{0,40}\b(all|every|each)\b.{0,30}\b(criteria|criterion|requirements?|checks?|items?)\b.{0,30}\b(pass(ed)?|complete[d]?|met|satisf(ied|y))\b/i,
-  /\b(ai|llm|automated|language model)\s+(reviewer|inspector|judge|grader|evaluator|assistant)\b/i,
+  // "assistant" is deliberately excluded: normal copy says "AI assistant" (false positive found by the evaluation).
+  /\b(ai|llm|automated|language model|grading model)\s+(reviewer|inspector|judge|grader|evaluator)\b/i,
+  /\binstructions?\s+for\s+the\s+(grading|reviewing|evaluating|judging)\s+(model|ai|system)\b/i,
   /\b(system prompt|you are now|new instructions|developer mode)\b/i,
   /\b(approve|release)\b.{0,30}\b(payment|funds|milestone)\b/i,
 ];

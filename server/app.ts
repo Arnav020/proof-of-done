@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { buildProject, compileScope } from './compiler.js';
 import { env } from './env.js';
 import { ApiError } from './errors.js';
-import { inspectMilestone } from './inspector.js';
+import { capturePage, inspectMilestone } from './inspector.js';
 import * as paypal from './paypal.js';
 import { authorizeMilestone, refundCriterion, settleMilestone, voidMilestone } from './settlement.js';
 import { findMilestone, unwrap, wrap } from './state.js';
@@ -36,6 +36,15 @@ const limit = (perMinute: number) => (req: Request, _res: Response, next: NextFu
 app.get('/api/health', (_req, res) => {
   res.json({ ok: true, paypal: !!(env.paypalClientId && env.paypalSecret), gemini: !!env.geminiKey, groq: !!env.groqKey, mode: env.paypalEnv, geminiModels: env.geminiModels });
 });
+
+/** Proves headless Chromium works on this host by loading our own fixed demo page (no AI, no user input). */
+app.get('/api/health/inspector', limit(4), h(async (req, res) => {
+  const host = (req.headers['x-forwarded-host'] as string | undefined)?.split(',')[0] ?? req.get('host');
+  const proto = (req.headers['x-forwarded-proto'] as string | undefined)?.split(',')[0] ?? req.protocol;
+  const t0 = Date.now();
+  const { facts } = await capturePage(`${proto}://${host}/demo-sites/larkhill-v2/index.html`);
+  res.json({ ok: true, ms: Date.now() - t0, title: facts.title, counts: facts.counts, mobileOverflowPx: facts.mobileOverflowPx });
+}));
 
 app.get('/api/config', (_req, res) => {
   res.json({ paypalClientId: env.paypalClientId, environment: env.paypalEnv });
