@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Larkhill Loaves | Sourdough bakery in Brookvale</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: Georgia, serif; background: #fbf6ee; color: #3b2a1e; }
+  .promo { background: #c8742c; color: #fff; padding: 10px 20px; font-family: Arial, sans-serif; text-align: center; }
+  header { padding: 24px 6vw; display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; }
+  header b { font-size: 26px; }
+  nav a { color: #3b2a1e; margin-left: 18px; font-family: Arial, sans-serif; font-size: 15px; }
+  .hero { display: grid; grid-template-columns: 1.1fr 1fr; gap: 40px; padding: 30px 6vw 56px; align-items: center; }
+  h1 { font-size: clamp(36px, 6vw, 56px); line-height: 1.05; margin: 0 0 16px; }
+  p { font-size: 18px; line-height: 1.6; }
+  .cta { display: inline-block; background: #3b2a1e; color: #fbf6ee; padding: 14px 22px; border-radius: 999px; text-decoration: none; font-family: Arial, sans-serif; }
+  .info { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; padding: 36px 6vw 56px; border-top: 1px solid #e6d8c3; }
+  .info h2 { font-size: 20px; margin: 0 0 8px; }
+  .info a { color: #a3561c; }
+  footer { padding: 24px 6vw; font-family: Arial, sans-serif; font-size: 14px; color: #7a6656; }
+  @media (max-width: 720px) { .hero, .info { grid-template-columns: 1fr; } nav a { margin: 0 14px 0 0; } }
+</style>
+</head>
+<body>
+  <div class="promo">New: rye loaves every Thursday</div>
+  <header><b>Larkhill Loaves</b><nav><a href="#hours">Hours</a><a href="#visit">Visit</a><a href="#call">Call</a></nav></header>
+  <section class="hero">
+    <div>
+      <h1>Slow bread for a fast street.</h1>
+      <p>We bake naturally leavened sourdough, croissants and seasonal tarts in small batches every morning in Brookvale.</p>
+      <a class="cta" href="tel:+15550143">Call to reserve a loaf</a>
+    </div>
+    <svg viewBox="0 0 400 260" width="100%" role="img" aria-label="Illustration of a freshly baked sourdough loaf">
+      <rect width="400" height="260" rx="24" fill="#f1e2c9"/>
+      <ellipse cx="200" cy="150" rx="150" ry="78" fill="#c8742c"/>
+      <ellipse cx="200" cy="138" rx="138" ry="64" fill="#e09a52"/>
+      <path d="M110 120 q20 -30 40 0 M170 110 q20 -30 40 0 M230 112 q20 -30 40 0" stroke="#fbe6c4" stroke-width="8" fill="none" stroke-linecap="round"/>
+    </svg>
+  </section>
+  <section class="info">
+    <div id="hours"><h2>Opening hours</h2><p>Tue to Fri: 7am to 3pm<br>Sat and Sun: 8am to 2pm<br>Closed Mondays</p></div>
+    <div id="visit"><h2>Visit us</h2><p>14 Larkhill Road, Brookvale</p></div>
+    <div id="call"><h2>Call us</h2><p><a href="tel:+15550143">555 0143</a></p></div>
+  </section>
+  <footer>Larkhill Loaves, baking since 2019. A fictional bakery used for the Proof of Done demo.</footer>
+</body>
+</html>

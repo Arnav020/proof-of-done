@@ -1,0 +1,41 @@
+{
+  "name": "proof-of-done",
+  "version": "1.0.0",
+  "private": true,
+  "description": "AI-verified milestone payments: PayPal authorizations captured only for work an AI Inspector has proven done.",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "concurrently -k -n api,web -c cyan,magenta \"tsx watch server/dev.ts\" \"vite\"",
+    "build": "tsc -p tsconfig.json --noEmit && vite build",
+    "start": "npm run build && tsx server/dev.ts",
+    "test": "vitest run",
+    "e2e": "tsx scripts/e2e.ts",
+    "eval": "tsx scripts/eval-inspector.ts"
+  },
+  "dependencies": {
+    "@sparticuz/chromium": "153.0.0",
+    "dotenv": "16.4.7",
+    "express": "5.1.0",
+    "puppeteer-core": "25.17.0",
+    "zod": "3.25.76"
+  },
+  "devDependencies": {
+    "@bryntum/gantt": "npm:@bryntum/gantt-trial@7.3.8",
+    "@types/express": "5.0.3",
+    "@types/node": "22.15.30",
+    "@types/react": "19.1.8",
+    "@types/react-dom": "19.1.6",
+    "@vitejs/plugin-react": "4.6.0",
+    "concurrently": "9.2.0",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "tsx": "4.20.3",
+    "typescript": "5.8.3",
+    "vite": "6.3.5",
+    "vitest": "3.2.4"
+  }
+}
