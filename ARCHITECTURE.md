@@ -9,7 +9,7 @@ Proof of Done lets a client and a freelancer agree on what "done" means, holds t
 | Web app | `src/` (React + Vite) | Client and Freelancer views, PayPal JS SDK v6 checkout, inspection evidence viewer, money ledger, Bryntum Gantt timeline |
 | API | `server/app.ts`, exported to Vercel by `api/index.ts` | Stateless Express app. Validates and signs project state, talks to PayPal, runs AI and the Inspector |
 | Scope compiler | `server/compiler.ts` | Brief text to milestones and weighted, testable acceptance criteria (Groq, Gemini fallback), validated with zod |
-| Inspector | `server/inspector.ts`, `server/browser.ts`, `server/checks.ts` | Loads the delivered URL at desktop and mobile sizes, collects page facts, runs deterministic checks, then asks Gemini to judge visual and content criteria from screenshots |
+| Inspector | `server/inspector.ts`, `server/browser.ts`, `server/checks.ts`, `server/egress.ts` | Loads the delivered URL at desktop and mobile sizes, collects page facts, runs deterministic checks, then asks Gemini to judge visual and content criteria from screenshots |
 | Injection guard | `server/injection.ts` | Flags text aimed at AI reviewers (hidden or visible) with Groq Llama Prompt Guard 2 plus heuristics |
 | Payment engine | `server/paypal.ts`, `server/settlement.ts` | Orders v2 (AUTHORIZE), Payments v2 (capture, void, refund), browser-safe client token for SDK v6. Computes capture amounts from verdicts and from PayPal's own record of what is already captured |
 | State signer | `server/state.ts` | HMAC-SHA256 over the canonical project JSON so the browser can hold state without being able to forge verdicts |
@@ -94,7 +94,7 @@ All bodies are JSON. `S` means `{ project: Project, sig: string }`. Errors are `
 
 - PayPal secret, Gemini key, Groq key and `STATE_SECRET` live only in server env vars. The browser gets only the PayPal client ID and short-lived client tokens.
 - Capture amounts are computed on the server from signed verdicts, capped by PayPal's authorized amount minus PayPal's captured total, so replaying an old state cannot over-capture.
-- **SSRF:** submitted URLs must be `http(s)`, ports 80/443, no credentials, and must not resolve to private, loopback, link-local or metadata addresses. Every request the headless browser makes is checked against the same rule (redirects included). Local addresses are allowed only when `ALLOW_LOCAL_URLS=1` (local development).
+- **SSRF:** submitted URLs must be `http(s)`, ports 80/443, no credentials, and resolve only to public addresses (IPv6 forms embedding IPv4 are judged by the IPv4 they carry). The headless browser runs behind a local egress proxy (`server/egress.ts`): every connection it makes, including redirects, subresources, workers and WebSockets, is resolved and checked at connect time and opened to that exact IP, so DNS rebinding has no window. Loopback is forced through the proxy; QUIC and non-proxied WebRTC are disabled. Local addresses are allowed only when `ALLOW_LOCAL_URLS=1` (local development).
 - **Prompt injection:** page content is passed to Gemini inside a delimited untrusted block with an instruction that it is evidence, never instructions. Prompt Guard and heuristics scan visible and hidden text. If injection is detected, AI judgment is not used and every criterion that would otherwise pass (deterministic ones included) is frozen as `needsReview`, so nothing is captured until the client approves or rejects it. Deterministic checks still report their findings as evidence.
 - Request limits: JSON bodies up to 200 KB, brief up to 4000 chars, best-effort per-IP rate limit on AI endpoints (per serverless instance).
 - CORS: same origin only (API and app are served from one domain).
@@ -107,7 +107,7 @@ All bodies are JSON. `S` means `{ project: Project, sig: string }`. Errors are `
 | PayPal JS SDK v6 | Buyer approval | Sandbox script `https://www.sandbox.paypal.com/web-sdk/v6/core` |
 | Groq (free tier) | Scope compiler, Prompt Guard | Rate limited. On failure the compiler falls back to Gemini and the guard falls back to heuristics only |
 | Gemini (free tier) | Visual and content judging | Rate limited. On failure, AI-judged criteria become `needsReview` and only deterministic results can trigger payment |
-| Headless Chromium | Inspector | `@sparticuz/chromium` on Vercel, local Chrome otherwise. 25 s navigation timeout |
+| Headless Chromium | Inspector | `@sparticuz/chromium` on Vercel, local Chrome otherwise. 25 s navigation timeout, 95 s budget for a whole inspection |
 | Vercel Hobby | Hosting | Functions up to 300 s and 2 GB. API max duration set to 120 s |
 
 ## 8. Background jobs
