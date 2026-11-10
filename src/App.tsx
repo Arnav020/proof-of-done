@@ -2,6 +2,7 @@ import { ArrowCounterClockwise, ArrowLeft, ArrowRight, Briefcase, CheckCircle, G
 import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { api, store, usd, type InspectionReport, type Signed } from './api';
 import { Composer } from './components/Composer';
+import { routeOf } from './route';
 import { PENDING_KEY } from './components/FundButton';
 import { Intro } from './components/Intro';
 import { Guide, nextStep } from './components/Guide';
@@ -19,15 +20,31 @@ export default function App() {
   const [busy, setBusy] = useState<string | null>(null);
   const [reports, setReports] = useState<Record<string, InspectionReport>>({});
   const [toast, setToast] = useState<Toast>(null);
-  const [view, setView] = useState<'landing' | 'app'>(() => (window.location.hash.startsWith('#/app') ? 'app' : 'landing'));
+  const [view, setView] = useState<'landing' | 'app'>(() => routeOf(window.location.hash) ?? 'landing');
+  const [brandInNav, setBrandInNav] = useState(true);
 
   useEffect(() => {
-    const onHash = () => setView(window.location.hash.startsWith('#/app') ? 'app' : 'landing');
+    // Only route hashes (#/ and #/app) change the screen; plain anchors such as #how never do.
+    const onHash = () => {
+      const r = routeOf(window.location.hash);
+      if (r) setView(r);
+    };
     window.addEventListener('hashchange', onHash);
     return () => window.removeEventListener('hashchange', onHash);
   }, []);
   useEffect(() => {
     window.scrollTo({ top: 0 });
+  }, [view]);
+
+  // On the landing page the hero already shows the wordmark and the main button, so the nav shows only the logo
+  // until you scroll past the hero's button. Then the name and the button slide into the nav.
+  useEffect(() => {
+    if (view !== 'landing') return setBrandInNav(true);
+    const el = document.querySelector('.hero .actions');
+    if (!el) return;
+    const io = new IntersectionObserver(([e]) => setBrandInNav(!e.isIntersecting), { rootMargin: '-80px 0px 0px 0px' });
+    io.observe(el);
+    return () => io.disconnect();
   }, [view]);
   const go = (v: 'landing' | 'app') => {
     window.location.hash = v === 'app' ? '#/app' : '#/';
@@ -159,13 +176,13 @@ export default function App() {
       <nav className="nav" aria-label="Main">
         <a className="brand" href="#/" onClick={(e) => { e.preventDefault(); go('landing'); }} aria-label="Proof of Done overview">
           <img src="/favicon.svg" width={24} height={24} alt="" />
-          <span>Proof of Done</span>
+          <span className={`brand-text ${brandInNav ? '' : 'hidden'}`}>Proof of Done</span>
         </a>
         {view === 'landing' ? (
           <>
             <a className="nav-link body-5" href="#how" onClick={(e) => { e.preventDefault(); document.getElementById('how')?.scrollIntoView({ behavior: 'smooth' }); }}>How it works</a>
             <a className="nav-link body-5" href="https://github.com/Arnav020/proof-of-done" target="_blank" rel="noreferrer">Source</a>
-            <button className="btn btn-primary btn-sm" onClick={() => go('app')}>{p ? 'Continue project' : 'Open the app'} <ArrowRight size={14} weight="bold" /></button>
+            <button className={`btn btn-primary btn-sm nav-cta ${brandInNav ? '' : 'hidden'}`} onClick={() => go('app')} tabIndex={brandInNav ? 0 : -1} aria-hidden={!brandInNav}>{p ? 'Continue project' : 'Open the app'} <ArrowRight size={14} weight="bold" /></button>
           </>
         ) : (
           <>

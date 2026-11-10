@@ -232,10 +232,10 @@ export function Intro({ onStart, hasProject }: { onStart: () => void; hasProject
             <img src="/favicon.svg" width={40} height={40} alt="" />
             <span className="heading-4">Proof of Done</span>
           </div>
-          <h1 className="heading-1 gradient-text">
+          <h1 className="heading-1 hero-title">
             Pay for work
             <br />
-            that is proven done.
+            that is <span className="accent">proven done.</span>
           </h1>
           <p className="sub">
             Proof of Done turns a client brief into checks an AI can verify, holds the money with PayPal,

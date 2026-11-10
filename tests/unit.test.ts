@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { runCheck } from '../server/checks';
 import { buildProject, countDeliverables, splitAmounts } from '../server/compiler';
 import { DEMO_BRIEF } from '../scripts/demo-data';
+import { routeOf } from '../src/route';
 import { PATTERNS, segmentsOf } from '../server/injection';
 import { clientTokenBody, capturedOnOrder, type PPOrder } from '../server/paypal';
 import { earnedAmount, planCapture, reviewCriterion } from '../server/settlement';
@@ -207,5 +208,17 @@ describe('regressions', () => {
     expect(clientTokenBody('localhost').getAll('domains[]')).toEqual([]);
     expect(clientTokenBody('127.0.0.1').getAll('domains[]')).toEqual([]);
     expect(clientTokenBody('proof-of-done.vercel.app').getAll('domains[]')).toEqual(['proof-of-done.vercel.app']);
+  });
+});
+
+describe('routing', () => {
+  it('maps route hashes to screens', () => {
+    expect(routeOf('#/app')).toBe('app');
+    expect(routeOf('#/')).toBe('landing');
+    expect(routeOf('')).toBe('landing');
+  });
+  it('ignores in-page anchors so they never kick you out of the app', () => {
+    expect(routeOf('#how')).toBeNull();
+    expect(routeOf('#root')).toBeNull();
   });
 });

@@ -95,6 +95,12 @@ a { color: inherit; }
 .section-label { display: flex; justify-content: space-between; align-items: baseline; gap: var(--s-200); flex-wrap: wrap; margin-bottom: var(--s-100); }
 
 /* Landing extras */
+.hero-title { background: linear-gradient(90deg, #ffffff, #9b9b9b); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.hero-title .accent { background: none; -webkit-text-fill-color: var(--lime); color: var(--lime); }
+.brand-text { display: inline-block; transition: opacity 300ms var(--ease), transform 300ms var(--ease); }
+.brand-text.hidden { opacity: 0; transform: translateX(-8px); width: 0; overflow: hidden; margin-left: calc(var(--s-75) * -1); }
+.nav-cta { transition: opacity 300ms var(--ease), transform 300ms var(--ease); }
+.nav-cta.hidden { opacity: 0; transform: translateY(-4px); pointer-events: none; position: absolute; right: var(--s-75); }
 .wordmark { display: flex; align-items: center; gap: var(--s-100); margin-bottom: var(--s-300); }
 .nav-link { text-decoration: none; color: var(--muted); padding: var(--s-50) var(--s-75); border-radius: var(--r-lg); transition: color 300ms var(--ease); white-space: nowrap; }
 .nav-link:hover { color: var(--text); }
