@@ -5,7 +5,7 @@ import { DEMO_BRIEF } from '../scripts/demo-data';
 import { routeOf } from '../src/route';
 import { PATTERNS, segmentsOf } from '../server/injection';
 import { clientTokenBody, capturedOnOrder, type PPOrder } from '../server/paypal';
-import { earnedAmount, planCapture, reviewCriterion } from '../server/settlement';
+import { captureKey, earnedAmount, planCapture, reviewCriterion } from '../server/settlement';
 import { canonical, sign, unwrap, wrap } from '../server/state';
 import { isPrivateIp } from '../server/urlguard';
 import { facts, milestone } from './fixtures';
@@ -220,5 +220,29 @@ describe('routing', () => {
   it('ignores in-page anchors so they never kick you out of the app', () => {
     expect(routeOf('#how')).toBeNull();
     expect(routeOf('#root')).toBeNull();
+  });
+});
+
+describe('independent review fixes', () => {
+  it.each(['::ffff:a9fe:a9fe', '[::ffff:a9fe:a9fe]', '::ffff:7f00:1', '::7f00:1', '64:ff9b::a9fe:a9fe', '2002:7f00:1::', '::ffff:169.254.169.254', '::ffff:0a00:0001'])(
+    'blocks IPv6 forms that embed a private IPv4: %s',
+    (ip) => expect(isPrivateIp(ip)).toBe(true),
+  );
+  it.each(['::ffff:8.8.8.8', '64:ff9b::808:808', '2a00:1450:4001:80b::200e'])('still allows public IPv6: %s', (ip) => expect(isPrivateIp(ip)).toBe(false));
+
+  it('a refund does not cause later underpayment', () => {
+    // $30 + $70. A was captured then refunded; PayPal's captured total stays gross ($30).
+    const m = milestone([true, true], [30, 70]);
+    m.criteria[0].paid = true;
+    m.criteria[0].refunded = true;
+    expect(planCapture(m, 30, 100)).toEqual({ earned: 100, delta: 70, final: true });
+  });
+
+  it('capture idempotency keys differ by amount and criteria', () => {
+    const a = captureKey('AUTH1', 30, 40, ['m1c2']);
+    expect(captureKey('AUTH1', 30, 70, ['m1c2', 'm1c3'])).not.toBe(a);
+    expect(captureKey('AUTH1', 30, 40, ['m1c3'])).not.toBe(a);
+    expect(captureKey('AUTH1', 30, 40, ['m1c2'])).toBe(a);
+    expect(a.length).toBeLessThanOrEqual(108);
   });
 });

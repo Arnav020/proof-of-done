@@ -16,16 +16,27 @@ const LOCAL_CHROME = [
   '/usr/bin/chromium-browser',
 ];
 
-export async function launchBrowser(): Promise<Browser> {
+/** When `proxy` is set, every connection Chromium makes (loopback included) goes through the egress filter. */
+function proxyArgs(proxy?: string): string[] {
+  if (!proxy) return [];
+  return [
+    `--proxy-server=${proxy}`,
+    '--proxy-bypass-list=<-loopback>', // by default Chromium skips the proxy for localhost; force it through
+    '--disable-quic',
+    '--force-webrtc-ip-handling-policy=disable_non_proxied_udp',
+  ];
+}
+
+export async function launchBrowser(opts: { proxy?: string } = {}): Promise<Browser> {
   if (env.isVercel) {
     const chromium = (await import('@sparticuz/chromium')).default;
     return puppeteer.launch({
-      args: chromium.args,
+      args: [...chromium.args, ...proxyArgs(opts.proxy)],
       executablePath: await chromium.executablePath(),
       headless: true,
     });
   }
   const exe = env.chromePath || LOCAL_CHROME.find((p) => fs.existsSync(p));
   if (!exe) throw new ApiError(500, 'NO_BROWSER', 'No Chrome or Edge found. Set CHROME_PATH in .env.');
-  return puppeteer.launch({ executablePath: exe, headless: true, args: ['--no-sandbox', '--disable-dev-shm-usage'] });
+  return puppeteer.launch({ executablePath: exe, headless: true, args: ['--no-sandbox', '--disable-dev-shm-usage', ...proxyArgs(opts.proxy)] });
 }

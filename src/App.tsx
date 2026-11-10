@@ -1,4 +1,4 @@
-import { ArrowCounterClockwise, ArrowLeft, ArrowRight, Briefcase, CheckCircle, GithubLogo, User, WarningCircle } from '@phosphor-icons/react';
+import { ArrowCounterClockwise, ArrowLeft, ArrowRight, Briefcase, CheckCircle, Code, User, WarningCircle } from '@phosphor-icons/react';
 import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { api, store, usd, type InspectionReport, type Signed } from './api';
 import { Composer } from './components/Composer';
@@ -192,8 +192,8 @@ export default function App() {
                 <button aria-pressed={role === 'freelancer'} onClick={() => setRole('freelancer')}><User size={14} /> Freelancer</button>
               </div>
             )}
-            <a className="btn btn-ghost btn-sm" href="https://github.com/Arnav020/proof-of-done" target="_blank" rel="noreferrer" aria-label="Source code on GitHub">
-              <GithubLogo size={18} />
+            <a className="btn btn-ghost btn-sm" href="https://github.com/Arnav020/proof-of-done" target="_blank" rel="noreferrer" aria-label="Source code">
+              <Code size={18} /> <span className="nav-src">Source</span>
             </a>
           </>
         )}

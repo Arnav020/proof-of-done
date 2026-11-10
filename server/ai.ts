@@ -44,13 +44,18 @@ export async function guardScore(text: string): Promise<number> {
 
 export type GeminiPart = { text: string } | { inline_data: { mime_type: string; data: string } };
 
-/** Tries each configured Gemini model in order until one answers. */
-export async function geminiJson(parts: GeminiPart[], schema?: unknown, timeoutMs = 45000): Promise<{ text: string; model: string }> {
+/** Tries each configured Gemini model in order until one answers, never past `deadline` (epoch ms). */
+export async function geminiJson(parts: GeminiPart[], schema?: unknown, timeoutMs = 45000, deadline = Infinity): Promise<{ text: string; model: string }> {
   if (!env.geminiKey) throw new ApiError(503, 'GEMINI_NOT_CONFIGURED', 'Gemini key missing.');
   let lastErr = '';
   for (const model of env.geminiModels) {
+    const budget = Math.min(timeoutMs, deadline - Date.now() - 1500);
+    if (budget < 4000) {
+      lastErr = lastErr || 'time budget used up';
+      break;
+    }
     try {
-      const text = await withTimeout(timeoutMs, async (signal) => {
+      const text = await withTimeout(budget, async (signal) => {
         const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
           method: 'POST',
           signal,

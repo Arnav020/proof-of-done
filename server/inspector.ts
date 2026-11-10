@@ -5,7 +5,9 @@ import { ApiError } from './errors.js';
 import { collectInPage, type PageFacts } from './facts.js';
 import { scanForInjection, type InjectionResult } from './injection.js';
 import type { Criterion, Milestone, Verdict } from './types.js';
-import { hostAllowed, validateUrl } from './urlguard.js';
+import { startEgressProxy } from './egress.js';
+import { env } from './env.js';
+import { validateUrl } from './urlguard.js';
 
 export type CheckDetail = { criterionId: string; title: string; kind: Criterion['kind'] } & Omit<Verdict, 'at'>;
 
@@ -29,29 +31,20 @@ export type InspectionReport = {
 
 const MIN_CONFIDENCE = 0.6;
 
+/** One time budget for a whole inspection, so it always answers before the 120 s serverless limit. */
+export const INSPECTION_BUDGET_MS = 95000;
+
 export async function capturePage(rawUrl: string): Promise<{ facts: PageFacts; desktopShot: string; mobileShot: string }> {
   const u = await validateUrl(rawUrl);
-  const browser = await launchBrowser();
+  // All browser traffic goes through the egress filter (skipped only for local development demo sites).
+  const egress = env.allowLocalUrls ? null : await startEgressProxy();
+  let browser: Awaited<ReturnType<typeof launchBrowser>> | null = null;
   try {
+    browser = await launchBrowser({ proxy: egress?.url });
     const page = await browser.newPage();
     let consoleErrors = 0;
     page.on('console', (m) => {
       if (m.type() === 'error') consoleErrors++;
-    });
-    await page.setRequestInterception(true);
-    page.on('request', (req) => {
-      const target = req.url();
-      if (target.startsWith('data:') || target.startsWith('blob:')) return void req.continue();
-      let host: string;
-      try {
-        host = new URL(target).hostname;
-      } catch {
-        return void req.abort('blockedbyclient');
-      }
-      // Every request, including redirects and subresources, must pass the same SSRF rule as the submitted URL.
-      hostAllowed(host)
-        .then((ok) => (ok ? req.continue() : req.abort('blockedbyclient')))
-        .catch(() => req.abort('blockedbyclient'));
     });
 
     await page.setViewport({ width: 1440, height: 900, deviceScaleFactor: 1 });
@@ -91,7 +84,8 @@ export async function capturePage(rawUrl: string): Promise<{ facts: PageFacts; d
     };
     return { facts, desktopShot, mobileShot };
   } finally {
-    await browser.close().catch(() => {});
+    await browser?.close().catch(() => {});
+    await egress?.close().catch(() => {});
   }
 }
 
@@ -115,7 +109,7 @@ const RESULT_SCHEMA = {
   required: ['results'],
 };
 
-async function judgeWithAI(criteria: Criterion[], facts: PageFacts, desktopShot: string, mobileShot: string, brief: string) {
+async function judgeWithAI(criteria: Criterion[], facts: PageFacts, desktopShot: string, mobileShot: string, brief: string, deadline: number) {
   const list = criteria.map((c) => `- id: ${c.id}\n  kind: ${c.kind}\n  test: ${c.title}. ${c.description}`).join('\n');
   const parts: GeminiPart[] = [
     {
@@ -144,13 +138,14 @@ ${facts.visibleText.slice(0, 6000)}
 Return JSON {"results":[{"id","pass","confidence","evidence"}]} with one entry per criterion id.`,
     },
   ];
-  const { text, model } = await geminiJson(parts, RESULT_SCHEMA);
+  const { text, model } = await geminiJson(parts, RESULT_SCHEMA, 45000, deadline);
   const parsed = parseJson<{ results: { id: string; pass: boolean; confidence: number; evidence: string }[] }>(text);
   return { results: parsed.results ?? [], model };
 }
 
 export async function inspectMilestone(m: Milestone, url: string, brief: string): Promise<InspectionReport> {
   const t0 = Date.now();
+  const deadline = t0 + INSPECTION_BUDGET_MS;
   const { facts, desktopShot, mobileShot } = await capturePage(url);
   const injection = await scanForInjection(facts);
 
@@ -183,7 +178,7 @@ export async function inspectMilestone(m: Milestone, url: string, brief: string)
       }
     } else {
       try {
-        const { results, model } = await judgeWithAI(aiCriteria, facts, desktopShot, mobileShot, brief);
+        const { results, model } = await judgeWithAI(aiCriteria, facts, desktopShot, mobileShot, brief, deadline);
         models.push(model);
         for (const c of aiCriteria) {
           const r = results.find((x) => x.id === c.id);

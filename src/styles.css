@@ -198,6 +198,7 @@ footer.site { border-top: 1px solid var(--line); padding: var(--s-400) 0; displa
   .nav { gap: var(--s-100); padding-left: var(--s-100); }
   .brand span { display: none; }
   .nav-link { display: none; }
+  .nav-src { display: none; }
   .composer, .panel, .ledger { padding: var(--s-200); }
 }
 @media (prefers-reduced-motion: reduce) {

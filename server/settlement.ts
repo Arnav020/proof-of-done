@@ -4,9 +4,18 @@ import type { Milestone, Project } from './types.js';
 
 const now = () => new Date().toISOString();
 
-/** Amount the verdicts say is earned (passed, not held for review). */
+/**
+ * Amount the verdicts say is earned (passed, not held for review). Refunded criteria still count: they were
+ * captured and PayPal's captured total stays gross after a refund, so excluding them would underpay later
+ * criteria (found by an independent review).
+ */
 export function earnedAmount(m: Milestone): number {
-  return round2(m.criteria.filter((c) => c.verdict?.pass && !c.verdict.needsReview && !c.refunded).reduce((s, c) => s + c.amount, 0));
+  return round2(m.criteria.filter((c) => c.verdict?.pass && !c.verdict.needsReview).reduce((s, c) => s + c.amount, 0));
+}
+
+/** Idempotency key bound to the exact capture: authorization, prior total, amount and the criteria it pays for. */
+export function captureKey(authId: string, already: number, delta: number, criterionIds: string[]): string {
+  return `cap-${authId}-${cents(already)}-${cents(delta)}-${[...criterionIds].sort().join('.')}`.slice(0, 108);
 }
 
 /**
@@ -24,7 +33,8 @@ export async function authorizeMilestone(p: Project, m: Milestone, orderId: stri
   if (m.payment.authorizationId) throw new ApiError(409, 'ALREADY_FUNDED', 'This milestone is already funded.');
   const before = await paypal.getOrder(orderId);
   const unit = before.purchase_units[0];
-  if (unit?.reference_id !== m.id || cents(Number(unit.amount.value)) !== cents(m.amount)) {
+  // reference_id is only m1/m2/..., so also require the order to belong to this project (custom_id).
+  if (unit?.reference_id !== m.id || unit.custom_id !== p.id.slice(0, 127) || cents(Number(unit.amount.value)) !== cents(m.amount)) {
     throw new ApiError(422, 'ORDER_MISMATCH', 'That PayPal order does not match this milestone.');
   }
   if (before.status !== 'APPROVED') throw new ApiError(422, 'ORDER_NOT_APPROVED', `The payer has not approved this order yet (status ${before.status}).`);
@@ -48,16 +58,27 @@ export async function settleMilestone(p: Project, m: Milestone) {
   const authorized = m.payment.authorizedAmount ?? m.amount;
   const plan = planCapture(m, already, authorized);
   m.payment.captured = already;
-  if (plan.delta <= 0) return null;
-
   const newlyPaid = m.criteria.filter((c) => c.verdict?.pass && !c.verdict.needsReview && !c.paid);
+  if (plan.delta <= 0) {
+    // Reconcile: if PayPal already holds captures covering these criteria (for example a capture whose response was
+    // lost), mark them paid instead of leaving state out of sync with PayPal.
+    if (newlyPaid.length && cents(already) >= cents(plan.earned)) {
+      newlyPaid.forEach((c) => (c.paid = true));
+      if (m.criteria.every((c) => c.paid)) m.status = 'paid';
+    }
+    return null;
+  }
+
   const cap = await paypal.captureAuthorization(
     authId,
     plan.delta,
     plan.final,
-    `cap-${authId}-${cents(already)}`,
+    captureKey(authId, already, plan.delta, newlyPaid.map((c) => c.id)),
     `Proof of Done: ${m.title} (${newlyPaid.length} criteria verified)`,
   );
+  if (cents(Number(cap.amount.value)) !== cents(plan.delta)) {
+    throw new ApiError(409, 'CAPTURE_MISMATCH', 'PayPal returned a capture for a different amount. Refresh and verify with PayPal.');
+  }
   const b = cap.seller_receivable_breakdown;
   newlyPaid.forEach((c) => (c.paid = true));
   m.payment.captured = round2(already + Number(cap.amount.value));

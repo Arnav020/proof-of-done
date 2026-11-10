@@ -10,7 +10,8 @@ import { findMilestone, unwrap, wrap } from './state.js';
 
 export const app = express();
 app.disable('x-powered-by');
-app.set('trust proxy', true);
+// Vercel's edge sets X-Forwarded-For; trust exactly one hop so clients cannot spoof their IP.
+app.set('trust proxy', 1);
 app.use(express.json({ limit: '200kb' }));
 app.use((_req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -23,8 +24,10 @@ const h = (fn: Handler) => (req: Request, res: Response, next: NextFunction) => 
 
 /** Best-effort per-IP limiter for endpoints that spend free AI quota (per serverless instance). */
 const hits = new Map<string, number[]>();
-const limit = (perMinute: number) => (req: Request, _res: Response, next: NextFunction) => {
-  const key = `${req.ip}:${req.path.split('/')[2] ?? ''}`;
+const limit = (perMinute: number, name: string) => (req: Request, _res: Response, next: NextFunction) => {
+  // Named buckets: funding, inspecting and settling no longer share one counter (a demo could hit 429).
+  const key = `${req.ip}:${name}`;
+  if (hits.size > 5000) hits.clear();
   const t = Date.now();
   const arr = (hits.get(key) ?? []).filter((x) => t - x < 60000);
   if (arr.length >= perMinute) return next(new ApiError(429, 'RATE_LIMITED', 'Too many requests. Wait a minute and try again.'));
@@ -38,7 +41,7 @@ app.get('/api/health', (_req, res) => {
 });
 
 /** Proves headless Chromium works on this host by loading our own fixed demo page (no AI, no user input). */
-app.get('/api/health/inspector', limit(4), h(async (req, res) => {
+app.get('/api/health/inspector', limit(4, 'selftest'), h(async (req, res) => {
   const host = (req.headers['x-forwarded-host'] as string | undefined)?.split(',')[0] ?? req.get('host');
   const proto = (req.headers['x-forwarded-proto'] as string | undefined)?.split(',')[0] ?? req.protocol;
   const t0 = Date.now();
@@ -50,7 +53,7 @@ app.get('/api/config', (_req, res) => {
   res.json({ paypalClientId: env.paypalClientId, environment: env.paypalEnv });
 });
 
-app.post('/api/paypal/client-token', limit(30), h(async (req, res) => {
+app.post('/api/paypal/client-token', limit(30, 'token'), h(async (req, res) => {
   const host = (req.headers['x-forwarded-host'] as string | undefined)?.split(',')[0] ?? req.hostname;
   res.json({ clientToken: await paypal.clientToken(host.replace(/:\d+$/, '')) });
 }));
@@ -62,7 +65,7 @@ const compileBody = z.object({
   freelancerName: z.string().trim().max(60).optional(),
 });
 
-app.post('/api/scope/compile', limit(8), h(async (req, res) => {
+app.post('/api/scope/compile', limit(8, 'compile'), h(async (req, res) => {
   const b = compileBody.safeParse(req.body);
   if (!b.success) throw new ApiError(400, 'BAD_INPUT', b.error.issues[0]?.message ?? 'Invalid input');
   const { plan, model } = await compileScope(b.data.brief);
@@ -73,7 +76,7 @@ app.post('/api/scope/compile', limit(8), h(async (req, res) => {
   res.json({ ...wrap(project), model });
 }));
 
-app.post('/api/milestones/:mid/order', limit(20), h(async (req, res) => {
+app.post('/api/milestones/:mid/order', limit(20, 'order'), h(async (req, res) => {
   const p = unwrap(req.body);
   const m = findMilestone(p, String(req.params.mid));
   if (m.payment.authorizationId) throw new ApiError(409, 'ALREADY_FUNDED', 'This milestone is already funded.');
@@ -86,7 +89,7 @@ app.post('/api/milestones/:mid/order', limit(20), h(async (req, res) => {
   res.json({ orderId: order.id, approveUrl });
 }));
 
-app.post('/api/milestones/:mid/authorize', limit(20), h(async (req, res) => {
+app.post('/api/milestones/:mid/authorize', limit(20, 'authorize'), h(async (req, res) => {
   const p = unwrap(req.body);
   const m = findMilestone(p, String(req.params.mid));
   const orderId = z.string().regex(/^[A-Z0-9]{10,25}$/).safeParse(req.body.orderId);
@@ -95,7 +98,7 @@ app.post('/api/milestones/:mid/authorize', limit(20), h(async (req, res) => {
   res.json(wrap(p));
 }));
 
-app.post('/api/milestones/:mid/inspect', limit(6), h(async (req, res) => {
+app.post('/api/milestones/:mid/inspect', limit(8, 'inspect'), h(async (req, res) => {
   const p = unwrap(req.body);
   const m = findMilestone(p, String(req.params.mid));
   if (!m.payment.authorizationId) throw new ApiError(409, 'NOT_FUNDED', 'The client must secure this milestone with PayPal before work is inspected.');
@@ -124,14 +127,14 @@ app.post('/api/milestones/:mid/inspect', limit(6), h(async (req, res) => {
   res.json({ ...wrap(p), report });
 }));
 
-app.post('/api/milestones/:mid/settle', limit(20), h(async (req, res) => {
+app.post('/api/milestones/:mid/settle', limit(20, 'settle'), h(async (req, res) => {
   const p = unwrap(req.body);
   const m = findMilestone(p, String(req.params.mid));
   const capture = await settleMilestone(p, m);
   res.json({ ...wrap(p), capture });
 }));
 
-app.post('/api/milestones/:mid/void', limit(20), h(async (req, res) => {
+app.post('/api/milestones/:mid/void', limit(20, 'void'), h(async (req, res) => {
   const p = unwrap(req.body);
   const m = findMilestone(p, String(req.params.mid));
   await voidMilestone(p, m);
@@ -141,7 +144,7 @@ app.post('/api/milestones/:mid/void', limit(20), h(async (req, res) => {
 const reviewBody = z.object({ criterionId: z.string().max(20), decision: z.enum(['approve', 'reject']) });
 
 /** Client resolves a held criterion; an approval is captured from the PayPal authorization right away. */
-app.post('/api/milestones/:mid/review', limit(20), h(async (req, res) => {
+app.post('/api/milestones/:mid/review', limit(20, 'review'), h(async (req, res) => {
   const p = unwrap(req.body);
   const m = findMilestone(p, String(req.params.mid));
   const b = reviewBody.safeParse(req.body);
@@ -151,7 +154,7 @@ app.post('/api/milestones/:mid/review', limit(20), h(async (req, res) => {
   res.json({ ...wrap(p), capture });
 }));
 
-app.post('/api/milestones/:mid/refund', limit(20), h(async (req, res) => {
+app.post('/api/milestones/:mid/refund', limit(20, 'refund'), h(async (req, res) => {
   const p = unwrap(req.body);
   const m = findMilestone(p, String(req.params.mid));
   const cid = z.string().max(20).safeParse(req.body.criterionId);
@@ -160,7 +163,7 @@ app.post('/api/milestones/:mid/refund', limit(20), h(async (req, res) => {
   res.json(wrap(p));
 }));
 
-app.get('/api/paypal/orders/:id', limit(30), h(async (req, res) => {
+app.get('/api/paypal/orders/:id', limit(30, 'verify'), h(async (req, res) => {
   const id = z.string().regex(/^[A-Z0-9]{10,25}$/).safeParse(req.params.id);
   if (!id.success) throw new ApiError(400, 'BAD_ORDER_ID', 'Invalid PayPal order id.');
   const o = await paypal.getOrder(id.data);

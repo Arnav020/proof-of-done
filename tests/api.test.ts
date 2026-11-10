@@ -141,3 +141,52 @@ describe('failure handling', () => {
     }
   });
 });
+
+describe('egress proxy (all headless browser traffic goes through it)', () => {
+  const viaProxy = async (proxyUrl: string, line: string) => {
+    const net = await import('node:net');
+    const u = new URL(proxyUrl);
+    return new Promise<string>((resolve) => {
+      const s = net.connect(Number(u.port), u.hostname, () => s.write(line));
+      let out = '';
+      s.on('data', (d) => { out += d.toString(); if (out.includes('\r\n')) { s.destroy(); resolve(out.split('\r\n')[0]); } });
+      s.on('error', () => resolve('error'));
+      s.on('close', () => resolve(out.split('\r\n')[0] || 'closed'));
+    });
+  };
+
+  it.each([
+    'CONNECT 127.0.0.1:443 HTTP/1.1\r\nHost: 127.0.0.1:443\r\n\r\n',
+    'CONNECT [::ffff:a9fe:a9fe]:443 HTTP/1.1\r\n\r\n',
+    'CONNECT localhost:9001 HTTP/1.1\r\n\r\n',
+    'CONNECT example.com:9001 HTTP/1.1\r\n\r\n',
+    'GET http://127.0.0.1:3001/api/health HTTP/1.1\r\nHost: 127.0.0.1:3001\r\n\r\n',
+    'GET http://169.254.169.254/latest/meta-data HTTP/1.1\r\nHost: 169.254.169.254\r\n\r\n',
+  ])('refuses %s', async (line) => {
+    const { startEgressProxy } = await import('../server/egress');
+    const proxy = await startEgressProxy();
+    try {
+      expect(await viaProxy(proxy.url, line)).toMatch(/403/);
+      expect(proxy.blocked.length).toBe(1);
+    } finally {
+      await proxy.close();
+    }
+  });
+});
+
+describe('authorize checks the order belongs to this project', () => {
+  it('rejects an approved order from another project with the same milestone id and amount', async () => {
+    const { authorizeMilestone } = await import('../server/settlement');
+    const p = project();
+    const spy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const u = String(input);
+      if (u.includes('/v1/oauth2/token')) return new Response(JSON.stringify({ access_token: 't', expires_in: 3600 }), { status: 200 });
+      return new Response(JSON.stringify({ id: 'ORDERX1234567', status: 'APPROVED', purchase_units: [{ reference_id: 'm1', custom_id: 'some-other-project', amount: { currency_code: 'USD', value: '100.00' } }] }), { status: 200 });
+    });
+    try {
+      await expect(authorizeMilestone(p, p.milestones[0], 'ORDERX1234567')).rejects.toThrow(/does not match/);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+});

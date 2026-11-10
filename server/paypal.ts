@@ -59,7 +59,13 @@ async function pp<T>(method: 'GET' | 'POST', path: string, body?: unknown, reque
     body: method === 'POST' ? JSON.stringify(body ?? {}) : undefined,
   });
   const text = await r.text();
-  const data = text ? JSON.parse(text) : {};
+  let data: unknown = {};
+  try {
+    data = text ? JSON.parse(text) : {};
+  } catch {
+    // PayPal outages can return HTML; report an upstream failure instead of blaming the caller.
+    throw new ApiError(502, 'PAYPAL_UNAVAILABLE', `PayPal returned an unexpected response (${r.status}). Try again shortly.`);
+  }
   if (!r.ok) {
     const e = data as PayPalErr;
     const issue = e.details?.[0]?.issue ?? e.name ?? 'PAYPAL_ERROR';
@@ -84,6 +90,7 @@ export type PPOrder = {
   links?: { href: string; rel: string }[];
   purchase_units: {
     reference_id?: string;
+    custom_id?: string;
     amount: PPAmount;
     payments?: { authorizations?: PPAuthorization[]; captures?: PPCapture[] };
   }[];

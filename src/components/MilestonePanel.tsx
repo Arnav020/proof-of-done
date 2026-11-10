@@ -167,7 +167,7 @@ export function MilestonePanel({ signed, m, role, report, busy, demoBase, onFund
 
       {busy === 'inspect' && (
         <div className="stack" style={{ gap: 'var(--s-100)' }} aria-live="polite">
-          <div className="caption-4 muted">Opening the page in headless Chrome, scanning for hidden instructions, running code checks, then asking the AI judge. This usually takes 10 to 30 seconds.</div>
+          <div className="caption-4 muted">Opening the page in a headless browser, scanning for hidden instructions, running code checks, then asking the AI judge. This usually takes 10 to 30 seconds.</div>
           <div className="skeleton" style={{ height: 20 }} />
           <div className="skeleton" style={{ height: 20, width: '80%' }} />
           <div className="skeleton" style={{ height: 180 }} />

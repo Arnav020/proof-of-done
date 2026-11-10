@@ -101,7 +101,17 @@ Results from the committed run in [results/metrics.json](results/metrics.json) (
 
 Two bugs were found by this evaluation and fixed with regression tests: a page with no viewport meta tag passed the phone-fit check, and the phrase "AI assistant" in normal copy was flagged as an injection. Prompt Guard alone scored the HTML-comment attack at 0.001; the pattern rules caught it, which is why both detectors run. The set is small and built by the author, so treat these as behaviour on these pages, not general accuracy.
 
+## Security review
+
+Before submission the code was audited by an independent reviewer that had not seen it being written. It found nine real defects, all fixed with regression tests:
+
+- **Inspector network sandbox.** All headless browser traffic (pages, subresources, redirects, workers, WebSockets) now goes through a local egress proxy ([server/egress.ts](server/egress.ts)) that resolves each host and checks the IP at connect time, allows only ports 80 and 443, and connects to that exact IP. This closes DNS rebinding and IPv6 forms that embed private IPv4 addresses (for example `[::ffff:a9fe:a9fe]`).
+- **Money.** A refund no longer causes later underpayment; capture idempotency keys include the amount and criteria; a capture whose response is lost is reconciled from PayPal's own totals; an approved order from another project can no longer be attached.
+- **Reliability.** One time budget per inspection keeps it inside the serverless limit; rate limits are per endpoint; PayPal outages return an honest 502.
+
 ## Limitations
+
+- No user accounts: whoever holds a project's signed state acts as both client and freelancer. That suits a two-sided demo in one browser; production would add sign-in so only the client can fund, approve, void or refund.
 
 - Websites only. Documents, designs and code deliverables are a roadmap item.
 - Deadlines are triggered by a button in the demo; production would run a scheduled job that voids expired authorizations.
