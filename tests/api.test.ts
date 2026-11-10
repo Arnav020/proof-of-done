@@ -5,6 +5,9 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 // Must be set before the server modules load: production-like URL rules and a fixed secret.
 process.env.ALLOW_LOCAL_URLS = '0';
 process.env.STATE_SECRET = 'test-secret';
+// Dummy sandbox credentials so the suite runs in a clean clone with no .env (PayPal calls are mocked where used).
+process.env.PAYPAL_CLIENT_ID ??= 'test-client-id';
+process.env.PAYPAL_CLIENT_SECRET ??= 'test-client-secret';
 
 let base = '';
 let server: Server;
