@@ -20,6 +20,7 @@ Proof of Done lets a client and a freelancer agree on what "done" means, holds t
 - **No database.** Vercel's free tier has no persistent disk, and free hosted databases add signup and expiry risk. The client keeps the project in `localStorage`; every API call sends `{project, sig}` and the server rejects any state whose signature does not match. Money state is never trusted from the client: before every capture the server reads the order from PayPal and uses PayPal's captured total.
 - **Two AI providers, each for what it is good at.** Groq (fast text, JSON) compiles scope and runs Prompt Guard. Groq's free model list has no vision model, so Gemini judges screenshots. Each is a fallback for the other's text tasks.
 - **Deterministic checks before AI.** Anything a script can verify (text present, form exists, mobile overflow, load time, alt text) is checked by code, and the model cannot override it. AI only judges what code cannot (visual quality, tone, layout intent).
+- **Scope contract.** When the client numbers deliverables, the compiler must return exactly that many milestones; a response that merges them is rejected and retried.
 - **Not added:** vector DB, multi-agent orchestration, queues. None would change what the judges see.
 
 ## 3. Data model (carried in signed state)
@@ -66,6 +67,7 @@ All bodies are JSON. `S` means `{ project: Project, sig: string }`. Errors are `
 | Method and path | Request | Response | Notes |
 |---|---|---|---|
 | `GET /api/health` | | `{ ok, paypal, gemini, groq, mode }` | Booleans say whether each key is configured, never the keys |
+| `GET /api/health/inspector` | | `{ ok, ms, title, counts }` | Loads our own fixed demo page in headless Chromium to prove the browser works on the host |
 | `GET /api/config` | | `{ paypalClientId, environment }` | Client ID is public by design |
 | `POST /api/paypal/client-token` | | `{ clientToken }` | Browser-safe SDK v6 token (`response_type=client_token`), bound to the request host |
 | `POST /api/scope/compile` | `{ brief (20..4000 chars), price (50..10000), clientName?, freelancerName? }` | `S` | Groq then Gemini fallback. Output validated, amounts normalized |
@@ -74,6 +76,7 @@ All bodies are JSON. `S` means `{ project: Project, sig: string }`. Errors are `
 | `POST /api/milestones/:mid/inspect` | `S + { url }` | `S + { report }` | `report` holds screenshots (base64 JPEG) and per-check details; it is not signed and not trusted later |
 | `POST /api/milestones/:mid/settle` | `S` | `S + { capture? }` | Captures `passedAmount - alreadyCaptured(PayPal)`. `final_capture` is true when every criterion has passed |
 | `POST /api/milestones/:mid/void` | `S` | `S` | Voids the authorization (no delivery by the deadline, or release of the unpaid remainder) |
+| `POST /api/milestones/:mid/review` | `S + { criterionId, decision: approve or reject }` | `S + { capture? }` | Client resolves a criterion held for review. Approval is captured from the authorization immediately |
 | `POST /api/milestones/:mid/refund` | `S + { criterionId }` | `S` | Refunds a paid criterion's amount from its capture (client contest outcome) |
 | `GET /api/paypal/orders/:id` | | `{ status, authorizations[], captures[] }` | Live PayPal read used by the ledger's "verify with PayPal" button |
 
@@ -83,15 +86,16 @@ All bodies are JSON. `S` means `{ project: Project, sig: string }`. Errors are `
 2. Client clicks "Secure with PayPal". The SDK v6 session calls `/order`, PayPal shows its approval popup, and `onApprove` calls `/authorize`. Status becomes `funded`. Nobody has been charged.
 3. Freelancer submits a URL. `/inspect` validates the URL (SSRF rules below), opens it in headless Chromium at 1440x900 and 390x844, collects facts, runs the injection guard, runs deterministic checks, then sends the screenshots and page text (wrapped as untrusted data) to Gemini for the remaining criteria. Verdicts with confidence under 0.6 are marked `needsReview` and are not paid automatically.
 4. `/settle` reads the order from PayPal, computes the delta, and captures it with `final_capture` set correctly. The ledger shows capture ID, gross, PayPal fee and net.
-5. Freelancer fixes failures and resubmits. Re-inspection pays only newly passed criteria. When all pass, the final capture closes the authorization.
-6. If the deadline passes with nothing delivered, `/void` voids the authorization.
+5. Criteria held for review (confidence under 0.6, or a frozen manipulation attempt) wait for the client, who approves (captured at once) or rejects (stays held).
+6. Freelancer fixes failures and resubmits. Re-inspection pays only newly passed criteria. When all pass, the final capture closes the authorization.
+7. If the deadline passes, `/void` voids the authorization and releases whatever was not captured.
 
 ## 6. Security boundaries
 
 - PayPal secret, Gemini key, Groq key and `STATE_SECRET` live only in server env vars. The browser gets only the PayPal client ID and short-lived client tokens.
 - Capture amounts are computed on the server from signed verdicts, capped by PayPal's authorized amount minus PayPal's captured total, so replaying an old state cannot over-capture.
 - **SSRF:** submitted URLs must be `http(s)`, ports 80/443, no credentials, and must not resolve to private, loopback, link-local or metadata addresses. Every request the headless browser makes is checked against the same rule (redirects included). Local addresses are allowed only when `ALLOW_LOCAL_URLS=1` (local development).
-- **Prompt injection:** page content is passed to Gemini inside a delimited untrusted block with an instruction that it is evidence, never instructions. Prompt Guard and heuristics scan visible and hidden text. If injection is detected, every AI-judged criterion on that milestone is held for review and the event is logged. Deterministic checks are unaffected.
+- **Prompt injection:** page content is passed to Gemini inside a delimited untrusted block with an instruction that it is evidence, never instructions. Prompt Guard and heuristics scan visible and hidden text. If injection is detected, AI judgment is not used and every criterion that would otherwise pass (deterministic ones included) is frozen as `needsReview`, so nothing is captured until the client approves or rejects it. Deterministic checks still report their findings as evidence.
 - Request limits: JSON bodies up to 200 KB, brief up to 4000 chars, best-effort per-IP rate limit on AI endpoints (per serverless instance).
 - CORS: same origin only (API and app are served from one domain).
 
