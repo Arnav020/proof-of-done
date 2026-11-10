@@ -52,7 +52,7 @@ export function Ledger({ project }: { project: Project }) {
         <div><div className="caption-3 muted">Captured</div><div className="mono title-2 lime">{usd(totals.captured)}</div></div>
         <div><div className="caption-3 muted">PayPal fees</div><div className="mono title-2">{usd(totals.fees)}</div></div>
       </div>
-      <div className="stack" style={{ gap: 'var(--s-200)' }}>
+      <div className="stack ledger-events" style={{ gap: 'var(--s-200)' }} tabIndex={0} aria-label="Ledger events, newest first">
         {events.map((e, i) => {
           const m = project.milestones.find((x) => x.id === e.milestoneId);
           const cap = e.type === 'captured' ? m?.payment.captures.find((c) => c.id === e.paypalId) : undefined;

@@ -1,6 +1,55 @@
-import { ArrowDown, CheckCircle, Circle, Lock, ShieldCheck } from '@phosphor-icons/react';
+import { ArrowRight, CheckCircle, Circle, Code, Lock, ShieldCheck, Sparkle, XCircle } from '@phosphor-icons/react';
 import { useEffect, useRef, useState } from 'react';
-import { useReveal } from '../hooks';
+
+const reduced = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/** Fires once when the element enters the viewport. */
+function useInView<T extends HTMLElement>(threshold = 0.35) {
+  const ref = useRef<T>(null);
+  const [seen, setSeen] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const io = new IntersectionObserver(([e]) => {
+      if (e.isIntersecting) {
+        setSeen(true);
+        io.disconnect();
+      }
+    }, { threshold });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [threshold]);
+  return [ref, seen] as const;
+}
+
+/** Types text out once it is visible; shows it whole under reduced motion. */
+function TypeText({ text, start, delay = 0, className }: { text: string; start: boolean; delay?: number; className?: string }) {
+  const [n, setN] = useState(0);
+  useEffect(() => {
+    if (!start) return;
+    if (reduced()) return setN(text.length);
+    let i = 0;
+    let id: number | undefined;
+    const t = window.setTimeout(() => {
+      id = window.setInterval(() => {
+        i += 2;
+        setN(Math.min(i, text.length));
+        if (i >= text.length) window.clearInterval(id);
+      }, 18);
+    }, delay);
+    return () => {
+      window.clearTimeout(t);
+      if (id) window.clearInterval(id);
+    };
+  }, [start, text, delay]);
+  return (
+    <p className={className} aria-label={text}>
+      <span aria-hidden="true">{text.slice(0, n)}</span>
+      {start && n < text.length && <span className="caret" aria-hidden="true" />}
+      <span aria-hidden="true" style={{ visibility: 'hidden' }}>{text.slice(n)}</span>
+    </p>
+  );
+}
 
 const RECEIPT = [
   { t: 'Bakery name on the homepage', a: '30.00', ok: true },
@@ -13,7 +62,7 @@ const RECEIPT = [
 function Receipt() {
   const [lit, setLit] = useState(0);
   useEffect(() => {
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return setLit(RECEIPT.length + 1);
+    if (reduced()) return setLit(RECEIPT.length + 1);
     const id = setInterval(() => setLit((n) => (n > RECEIPT.length + 2 ? 0 : n + 1)), 900);
     return () => clearInterval(id);
   }, []);
@@ -53,7 +102,7 @@ function TaglineReveal() {
     const el = ref.current;
     if (!el) return;
     const spans = Array.from(el.querySelectorAll<HTMLSpanElement>('.w'));
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    if (reduced()) {
       spans.forEach((s) => s.classList.add('on'));
       return;
     }
@@ -84,31 +133,105 @@ function TaglineReveal() {
   );
 }
 
-function Steps() {
-  const ref = useReveal<HTMLDivElement>();
-  const steps = [
-    { n: '01', t: 'The brief becomes checks', d: 'The client describes the job in plain words. The scope compiler turns it into milestones and testable criteria, each with a price.' },
-    { n: '02', t: 'PayPal holds the money', d: 'The client approves a PayPal authorization for each milestone. The freelancer sees the funds are secured. Nobody is charged yet.' },
-    { n: '03', t: 'The Inspector decides', d: 'The freelancer submits a link. A headless browser and an AI judge test every criterion, and PayPal captures exactly what passed.' },
+/* Small live visuals, one per step. Each animates in when its card is visible. */
+function BriefVisual({ on }: { on: boolean }) {
+  const chips = [
+    { icon: <Code size={12} />, t: 'Tap to call', a: '$30.00' },
+    { icon: <Code size={12} />, t: 'Opening hours', a: '$30.00' },
+    { icon: <Sparkle size={12} />, t: 'Reads cleanly on a phone', a: '$60.00' },
   ];
   return (
-    <div ref={ref} className="steps wrap reveal">
-      {steps.map((s) => (
-        <div key={s.n} className="card step">
-          <div className="mono title-4 n">{s.n}</div>
-          <h3 className="heading-6" style={{ marginTop: 'var(--s-200)' }}>{s.t}</h3>
-          <p className="body-6 muted" style={{ marginTop: 'var(--s-75)' }}>{s.d}</p>
-        </div>
-      ))}
+    <div className="viz">
+      <div className="viz-brief body-6 muted">"A homepage with our hours, a number people can tap to call, and it has to look right on phones."</div>
+      <div className="viz-chips">
+        {chips.map((c, i) => (
+          <span key={c.t} className={`chip idle viz-pop ${on ? 'in' : ''}`} style={{ transitionDelay: `${300 + i * 220}ms` }}>
+            {c.icon} {c.t} <span className="mono lime">{c.a}</span>
+          </span>
+        ))}
+      </div>
     </div>
   );
 }
 
-export function Intro({ onStart }: { onStart: () => void }) {
+function HoldVisual({ on }: { on: boolean }) {
+  return (
+    <div className="viz viz-hold">
+      <div className={`viz-lock ${on ? 'in' : ''}`}><Lock size={28} weight="fill" /></div>
+      <div className="stack" style={{ gap: 'var(--s-50)' }}>
+        <div className="row" style={{ justifyContent: 'space-between' }}><span className="caption-4 muted">Held by PayPal</span><span className="mono title-4 lime">$180.00</span></div>
+        <div className="row" style={{ justifyContent: 'space-between' }}><span className="caption-4 muted">Charged so far</span><span className="mono title-4">$0.00</span></div>
+        <div className="caption-5 faint mono">intent: AUTHORIZE</div>
+      </div>
+    </div>
+  );
+}
+
+function InspectVisual({ on }: { on: boolean }) {
+  const rows = [
+    { t: 'Tap to call', ok: true },
+    { t: 'Opening hours', ok: true },
+    { t: 'Reads cleanly on a phone', ok: false },
+  ];
+  return (
+    <div className="viz">
+      {rows.map((r, i) => (
+        <div key={r.t} className={`viz-row viz-pop ${on ? 'in' : ''}`} style={{ transitionDelay: `${300 + i * 260}ms` }}>
+          {r.ok ? <CheckCircle size={16} weight="fill" className="lime" /> : <XCircle size={16} weight="fill" className="coral" />}
+          <span className="body-6">{r.t}</span>
+        </div>
+      ))}
+      <div className={`viz-row viz-pop ${on ? 'in' : ''}`} style={{ transitionDelay: '1150ms' }}>
+        <span className="caption-4 muted">PayPal captured</span>
+        <span className="mono title-4 lime" style={{ marginLeft: 'auto' }}>$60.00</span>
+      </div>
+    </div>
+  );
+}
+
+const STEPS = [
+  { n: '01', t: 'The brief becomes checks', d: 'The client describes the job in plain words. The scope compiler turns it into milestones and testable criteria, each with a price.', V: BriefVisual },
+  { n: '02', t: 'PayPal holds the money', d: 'The client approves a PayPal authorization for each milestone. The freelancer sees the funds are secured. Nobody is charged yet.', V: HoldVisual },
+  { n: '03', t: 'The Inspector decides', d: 'The freelancer submits a link. A headless browser and an AI judge test every criterion, and PayPal captures exactly what passed.', V: InspectVisual },
+];
+
+/** Each card watches its own visibility, so stacked cards on small screens animate as they arrive. */
+function StepCard({ s, i }: { s: (typeof STEPS)[number]; i: number }) {
+  const [ref, on] = useInView<HTMLDivElement>(0.3);
+  const V = s.V;
+  return (
+    <div ref={ref} className={`card step reveal ${on ? 'in' : ''}`} style={{ transitionDelay: `${i * 120}ms` }}>
+      <V on={on} />
+      <div className="mono title-4 n" style={{ marginTop: 'var(--s-300)' }}>{s.n}</div>
+      <h3 className="heading-6" style={{ marginTop: 'var(--s-100)' }}>{s.t}</h3>
+      <TypeText className="body-6 muted step-text" text={s.d} start={on} delay={500 + i * 250} />
+    </div>
+  );
+}
+
+function Steps() {
+  return (
+    <section id="how" className="wrap" aria-label="How it works">
+      <div className="section-label" style={{ marginBottom: 'var(--s-300)' }}>
+        <h2 className="heading-4">How it works</h2>
+        <span className="body-6 muted">Three steps, real PayPal calls at every one.</span>
+      </div>
+      <div className="steps">
+        {STEPS.map((s, i) => <StepCard key={s.n} s={s} i={i} />)}
+      </div>
+    </section>
+  );
+}
+
+export function Intro({ onStart, hasProject }: { onStart: () => void; hasProject: boolean }) {
   return (
     <>
       <header className="hero wrap">
         <div>
+          <div className="wordmark">
+            <img src="/favicon.svg" width={40} height={40} alt="" />
+            <span className="heading-4">Proof of Done</span>
+          </div>
           <h1 className="heading-1 gradient-text">
             Pay for work
             <br />
@@ -120,7 +243,7 @@ export function Intro({ onStart }: { onStart: () => void }) {
           </p>
           <div className="actions">
             <button className="btn btn-primary" onClick={onStart}>
-              Try the sample bakery project <ArrowDown size={18} weight="bold" />
+              {hasProject ? 'Continue your project' : 'Try the sample bakery project'} <ArrowRight size={18} weight="bold" />
             </button>
             <span className="proof-line caption-4">
               <ShieldCheck size={16} weight="fill" className="lime" /> Live on the PayPal sandbox, every capture ID shown
@@ -131,6 +254,13 @@ export function Intro({ onStart }: { onStart: () => void }) {
       </header>
       <TaglineReveal />
       <Steps />
+      <section className="wrap cta-end">
+        <h2 className="heading-3">See it decide with real money movement.</h2>
+        <p className="body-3 muted">Fund a milestone with the PayPal sandbox, submit a delivery, and watch the Inspector release exactly what passed.</p>
+        <button className="btn btn-primary" onClick={onStart}>
+          {hasProject ? 'Continue your project' : 'Try the sample bakery project'} <ArrowRight size={18} weight="bold" />
+        </button>
+      </section>
     </>
   );
 }

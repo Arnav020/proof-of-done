@@ -1,10 +1,10 @@
-import { ArrowCounterClockwise, Briefcase, CheckCircle, GithubLogo, User, WarningCircle } from '@phosphor-icons/react';
-import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import { ArrowCounterClockwise, ArrowLeft, ArrowRight, Briefcase, CheckCircle, GithubLogo, User, WarningCircle } from '@phosphor-icons/react';
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { api, store, usd, type InspectionReport, type Signed } from './api';
 import { Composer } from './components/Composer';
 import { PENDING_KEY } from './components/FundButton';
 import { Intro } from './components/Intro';
-import { Guide, nextStep, RolePicker } from './components/Guide';
+import { Guide, nextStep } from './components/Guide';
 import { Ledger } from './components/Ledger';
 import { MilestonePanel, STATUS } from './components/MilestonePanel';
 
@@ -19,7 +19,20 @@ export default function App() {
   const [busy, setBusy] = useState<string | null>(null);
   const [reports, setReports] = useState<Record<string, InspectionReport>>({});
   const [toast, setToast] = useState<Toast>(null);
-  const workspace = useRef<HTMLElement>(null);
+  const [view, setView] = useState<'landing' | 'app'>(() => (window.location.hash.startsWith('#/app') ? 'app' : 'landing'));
+
+  useEffect(() => {
+    const onHash = () => setView(window.location.hash.startsWith('#/app') ? 'app' : 'landing');
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
+  }, []);
+  useEffect(() => {
+    window.scrollTo({ top: 0 });
+  }, [view]);
+  const go = (v: 'landing' | 'app') => {
+    window.location.hash = v === 'app' ? '#/app' : '#/';
+    setView(v);
+  };
 
   const update = useCallback((s: Signed | null) => {
     setSigned(s);
@@ -41,7 +54,8 @@ export default function App() {
     const returned = q.get('paypal_return');
     const s = store.load();
     if (!token || !returned || !s) return;
-    window.history.replaceState({}, '', window.location.pathname);
+    window.history.replaceState({}, '', `${window.location.pathname}#/app`);
+    setView('app');
     const pending = JSON.parse(localStorage.getItem(PENDING_KEY) ?? 'null') as { mid: string; orderId: string } | null;
     if (!pending || pending.orderId !== token) return;
     setBusy('fund');
@@ -50,8 +64,6 @@ export default function App() {
       .catch((e) => fail(e.message))
       .finally(() => { setBusy(null); localStorage.removeItem(PENDING_KEY); });
   }, [update, fail]);
-
-  const scrollToWorkspace = () => workspace.current?.scrollIntoView({ behavior: 'smooth' });
 
   const compile = async (brief: string, price: number) => {
     setBusy('compile');
@@ -145,35 +157,57 @@ export default function App() {
   return (
     <>
       <nav className="nav" aria-label="Main">
-        <a className="brand" href="#top" aria-label="Proof of Done home">
+        <a className="brand" href="#/" onClick={(e) => { e.preventDefault(); go('landing'); }} aria-label="Proof of Done overview">
           <img src="/favicon.svg" width={24} height={24} alt="" />
           <span>Proof of Done</span>
         </a>
-        {p && (
-          <div className="role" role="group" aria-label="View as">
-            <button aria-pressed={role === 'client'} onClick={() => setRole('client')}><Briefcase size={14} /> Client</button>
-            <button aria-pressed={role === 'freelancer'} onClick={() => setRole('freelancer')}><User size={14} /> Freelancer</button>
-          </div>
+        {view === 'landing' ? (
+          <>
+            <a className="nav-link body-5" href="#how" onClick={(e) => { e.preventDefault(); document.getElementById('how')?.scrollIntoView({ behavior: 'smooth' }); }}>How it works</a>
+            <a className="nav-link body-5" href="https://github.com/Arnav020/proof-of-done" target="_blank" rel="noreferrer">Source</a>
+            <button className="btn btn-primary btn-sm" onClick={() => go('app')}>{p ? 'Continue project' : 'Open the app'} <ArrowRight size={14} weight="bold" /></button>
+          </>
+        ) : (
+          <>
+            {p && (
+              <div className="role" role="group" aria-label="View as">
+                <button aria-pressed={role === 'client'} onClick={() => setRole('client')}><Briefcase size={14} /> Client</button>
+                <button aria-pressed={role === 'freelancer'} onClick={() => setRole('freelancer')}><User size={14} /> Freelancer</button>
+              </div>
+            )}
+            <a className="btn btn-ghost btn-sm" href="https://github.com/Arnav020/proof-of-done" target="_blank" rel="noreferrer" aria-label="Source code on GitHub">
+              <GithubLogo size={18} />
+            </a>
+          </>
         )}
-        <a className="btn btn-ghost btn-sm" href="https://github.com/Arnav020/proof-of-done" target="_blank" rel="noreferrer" aria-label="Source code on GitHub">
-          <GithubLogo size={18} />
-        </a>
       </nav>
 
-      <div id="top" />
-      <Intro onStart={scrollToWorkspace} />
+      {view === 'landing' && <Intro onStart={() => go('app')} hasProject={!!p} />}
 
-      <main id="workspace" ref={workspace} className="workspace">
+      {view === 'app' && (
+      <main id="workspace" className="workspace">
         <div className="wrap">
+          <button className="btn btn-ghost btn-sm back" onClick={() => go('landing')}><ArrowLeft size={14} /> Overview</button>
           <div className="ws-head">
             <div>
-              <div className="caption-3 lime">Live workspace</div>
+              <div className="caption-3 lime">Live workspace · PayPal sandbox</div>
               <h2 className="heading-3" style={{ marginTop: 'var(--s-75)' }}>{p ? p.title : 'Start a project'}</h2>
               <p className="body-6 muted" style={{ marginTop: 'var(--s-75)' }}>
                 {p
-                  ? `${p.clientName} hires ${p.freelancerName} for ${usd(p.total)}. Switch between Client and Freelancer in the top bar.`
+                  ? `${p.clientName} hires ${p.freelancerName} for ${usd(p.total)}.`
                   : 'You play both sides. As the client you write the brief and fund milestones with PayPal; as the freelancer you submit work.'}
               </p>
+              {p && (
+                <p className="body-6" style={{ marginTop: 'var(--s-50)' }}>
+                  <span className="lime">Viewing as {role === 'client' ? 'Client' : 'Freelancer'}:</span>{' '}
+                  <span className="muted">
+                    {role === 'client'
+                      ? 'you fund milestones with PayPal, review anything the Inspector holds, and can void or dispute.'
+                      : 'you submit links to delivered work and get paid for every criterion that passes.'}
+                    {' '}Switch sides in the top bar.
+                  </span>
+                </p>
+              )}
             </div>
             {p && (
               <button className="btn btn-sm" onClick={() => { update(null); setReports({}); }}>
@@ -186,8 +220,7 @@ export default function App() {
             <Composer busy={busy === 'compile'} onCompile={compile} />
           ) : (
             <div className="stack">
-              <RolePicker role={role} onRole={setRole} />
-              {m && <Guide step={nextStep(m, role, p.milestones.length, setRole, nextMilestone)} />}
+              {m &&<Guide step={nextStep(m, role, p.milestones.length, setRole, nextMilestone)} />}
               <div className="section-label">
                 <span className="title-4">Milestones</span>
                 <span className="caption-5 muted">Each milestone has its own PayPal hold. Select one to work on it.</span>
@@ -236,6 +269,7 @@ export default function App() {
           )}
         </div>
       </main>
+      )}
 
       <footer className="site wrap">
         <span className="caption-5 muted">Proof of Done runs on the PayPal sandbox. No real money moves. Demo businesses are fictional.</span>

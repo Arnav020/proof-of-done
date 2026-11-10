@@ -1,28 +1,8 @@
-import { ArrowRight, Briefcase, Compass, User } from '@phosphor-icons/react';
+import { ArrowRight, Compass } from '@phosphor-icons/react';
 import { usd, type Project } from '../api';
 
 type Role = 'client' | 'freelancer';
 type M = Project['milestones'][number];
-
-export function RolePicker({ role, onRole }: { role: Role; onRole: (r: Role) => void }) {
-  const opts = [
-    { r: 'client' as const, icon: <Briefcase size={20} />, title: 'Client', text: 'Funds milestones with PayPal, reviews anything the Inspector holds, can void or dispute.' },
-    { r: 'freelancer' as const, icon: <User size={20} />, title: 'Freelancer', text: 'Submits a link to the delivered work and gets paid for every criterion that passes.' },
-  ];
-  return (
-    <div className="role-picker" role="radiogroup" aria-label="Choose whose view you see">
-      <span className="caption-3 muted">You play both sides. Viewing as</span>
-      <div className="role-cards">
-        {opts.map((o) => (
-          <button key={o.r} role="radio" aria-checked={role === o.r} className="role-card" onClick={() => onRole(o.r)}>
-            <span className="row" style={{ gap: 'var(--s-75)' }}>{o.icon}<span className="title-3">{o.title}</span></span>
-            <span className="caption-5 muted">{o.text}</span>
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
 
 type Step = { n: number; title: string; text: string; action?: { label: string; run: () => void } };
 
