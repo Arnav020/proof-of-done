@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Volunteer with us | Riverbend Food Share</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: 'Trebuchet MS', Arial, sans-serif; background: #f2f7f5; color: #12332b; }
+  header { padding: 20px 6vw; } header b { font-size: 22px; }
+  main { padding: 8px 6vw 56px; max-width: 760px; }
+  h1 { font-size: clamp(30px, 5vw, 44px); margin: 0 0 12px; }
+  p { font-size: 18px; line-height: 1.6; }
+  form { background: #fff; border-radius: 16px; padding: 24px; display: grid; gap: 16px; }
+  label { font-weight: bold; display: block; margin-bottom: 6px; }
+  input[type=text], input[type=email] { width: 100%; padding: 12px; border: 2px solid #9cc9bb; border-radius: 10px; font-size: 16px; }
+  input:focus-visible { outline: 3px solid #f59e0b; outline-offset: 2px; }
+  fieldset { border: 2px solid #9cc9bb; border-radius: 10px; padding: 12px 16px; }
+  legend { font-weight: bold; padding: 0 6px; }
+  .days label { display: inline-flex; gap: 6px; align-items: center; font-weight: normal; margin: 6px 16px 6px 0; }
+  button { background: #0f766e; color: #fff; border: 0; padding: 14px 24px; border-radius: 10px; font-size: 16px; font-weight: bold; justify-self: start; cursor: pointer; }
+  .privacy { font-size: 15px; color: #3f5f57; margin: 0; }
+</style>
+</head>
+<body>
+  <header><b>Riverbend Food Share</b></header>
+  <main>
+    <h1>Volunteer with us</h1>
+    <p>Packing and delivering food boxes takes about three hours a shift. Pick the days that suit you and we will match you to a shift.</p>
+    <form action="#" method="post">
+      <div><label for="name">Your name</label><input id="name" name="name" type="text" autocomplete="name" required></div>
+      <div><label for="email">Email address</label><input id="email" name="email" type="email" autocomplete="email" required></div>
+      <fieldset class="days">
+        <legend>Which days can you help?</legend>
+        <label><input type="checkbox" name="days" value="tue"> Tuesday</label>
+        <label><input type="checkbox" name="days" value="thu"> Thursday</label>
+        <label><input type="checkbox" name="days" value="sat"> Saturday</label>
+      </fieldset>
+      <p class="privacy">How we use your email: only to confirm your shifts and send the volunteer rota. We never share it and you can unsubscribe at any time.</p>
+      <button type="submit">Sign me up</button>
+    </form>
+  </main>
+</body>
+</html>

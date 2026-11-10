@@ -1,5 +1,7 @@
 import { ArrowRight, CheckCircle, Circle, Code, Lock, ShieldCheck, Sparkle, XCircle } from '@phosphor-icons/react';
 import { useEffect, useRef, useState } from 'react';
+// Only the summary object is imported, so the hero can never drift from the committed evaluation.
+import { results } from '../../results/metrics.json';
 
 const reduced = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -48,6 +50,38 @@ function TypeText({ text, start, delay = 0, className }: { text: string; start: 
       {start && n < text.length && <span className="caret" aria-hidden="true" />}
       <span aria-hidden="true" style={{ visibility: 'hidden' }}>{text.slice(n)}</span>
     </p>
+  );
+}
+
+/** Real, measured numbers (results/metrics.json) instead of decoration. */
+function ProofStrip() {
+  const r = results;
+  const stats = [
+    { v: `${r.injectionPagesFlagged.value} / ${r.injectionPagesFlagged.total}`, l: 'test runs with hidden AI-reviewer instructions caught' },
+    { v: `${r.injectionFalsePositives.value} / ${r.injectionFalsePositives.total}`, l: 'clean pages wrongly flagged' },
+    { v: `${r.codeCheckAccuracy.correct} / ${r.codeCheckAccuracy.total}`, l: 'code checks judged correctly' },
+    { v: `${(r.inspectionLatencyMs.median / 1000).toFixed(1)} s`, l: 'median inspection, browser to verdict' },
+  ];
+  return (
+    <div className="proof-strip">
+      <div className="proof-stats">
+        {stats.map((s) => (
+          <div key={s.l} className="proof-stat">
+            <span className="mono heading-5 lime">{s.v}</span>
+            <span className="caption-5 muted">{s.l}</span>
+          </div>
+        ))}
+      </div>
+      <div className="proof-foot">
+        <span className="caption-4 faint">Built on</span>
+        <span className="chip idle mono">PayPal JS SDK v6</span>
+        <span className="chip idle mono">Orders v2 · AUTHORIZE</span>
+        <span className="chip idle mono">Payments v2 · capture, void, refund</span>
+        <a className="caption-4 faint" href="https://github.com/Arnav020/proof-of-done/blob/main/results/metrics.json" target="_blank" rel="noreferrer">
+          Measured on hand-labelled pages, see results/metrics.json
+        </a>
+      </div>
+    </div>
   );
 }
 
@@ -243,7 +277,7 @@ export function Intro({ onStart, hasProject }: { onStart: () => void; hasProject
           </p>
           <div className="actions">
             <button className="btn btn-primary" onClick={onStart}>
-              {hasProject ? 'Continue your project' : 'Try the sample bakery project'} <ArrowRight size={18} weight="bold" />
+              {hasProject ? 'Continue your project' : 'Try a sample project'} <ArrowRight size={18} weight="bold" />
             </button>
             <span className="proof-line caption-4">
               <ShieldCheck size={16} weight="fill" className="lime" /> Live on the PayPal sandbox, every capture ID shown
@@ -251,6 +285,7 @@ export function Intro({ onStart, hasProject }: { onStart: () => void; hasProject
           </div>
         </div>
         <Receipt />
+        <ProofStrip />
       </header>
       <TaglineReveal />
       <Steps />
@@ -258,7 +293,7 @@ export function Intro({ onStart, hasProject }: { onStart: () => void; hasProject
         <h2 className="heading-3">See it decide with real money movement.</h2>
         <p className="body-3 muted">Fund a milestone with the PayPal sandbox, submit a delivery, and watch the Inspector release exactly what passed.</p>
         <button className="btn btn-primary" onClick={onStart}>
-          {hasProject ? 'Continue your project' : 'Try the sample bakery project'} <ArrowRight size={18} weight="bold" />
+          {hasProject ? 'Continue your project' : 'Try a sample project'} <ArrowRight size={18} weight="bold" />
         </button>
       </section>
     </>

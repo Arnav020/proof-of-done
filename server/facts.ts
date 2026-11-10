@@ -93,7 +93,15 @@ export function collectInPage() {
       email_input: doc.querySelectorAll('input[type="email"]').length,
       phone_link: doc.querySelectorAll('a[href^="tel:"]').length,
       image: imgs.filter((i) => i.naturalWidth > 1).length + svgs.length + doc.querySelectorAll('[style*="background-image"]').length,
-      button: doc.querySelectorAll('button, input[type="submit"], a[role="button"], .btn, .button').length,
+      // Links styled as buttons (filled background and padding) count too: "Donate" and "Book now" are usually links.
+      button: new Set([
+        ...Array.from(doc.querySelectorAll('button, input[type="submit"], input[type="button"], a[role="button"], .btn, .button')),
+        ...Array.from(doc.querySelectorAll('a[href]')).filter((a) => {
+          const s = getComputedStyle(a);
+          const filled = s.backgroundColor !== 'rgba(0, 0, 0, 0)' && s.backgroundColor !== 'transparent';
+          return filled && parseFloat(s.paddingLeft) >= 8 && parseFloat(s.paddingTop) >= 4 && (a.textContent ?? '').trim().length <= 40;
+        }),
+      ]).size,
       nav: doc.querySelectorAll('nav, [role="navigation"]').length,
       footer: doc.querySelectorAll('footer, [role="contentinfo"]').length,
       map: doc.querySelectorAll('iframe[src*="map"], [class*="map" i], [id*="map" i]').length,

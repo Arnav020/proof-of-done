@@ -56,19 +56,25 @@ export async function geminiJson(parts: GeminiPart[], schema?: unknown, timeoutM
     }
     try {
       const text = await withTimeout(budget, async (signal) => {
-        const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
-          method: 'POST',
-          signal,
-          headers: { 'x-goog-api-key': env.geminiKey, 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ role: 'user', parts }],
-            generationConfig: {
-              temperature: 0,
-              responseMimeType: 'application/json',
-              ...(schema ? { responseSchema: schema } : {}),
-            },
-          }),
-        });
+        const call = () =>
+          fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+            method: 'POST',
+            signal,
+            headers: { 'x-goog-api-key': env.geminiKey, 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              // Gemma models reject JSON mode and response schemas; they get plain output and the tolerant parser.
+              contents: [{ role: 'user', parts: model.startsWith('gemma') ? [...parts, { text: 'Respond with the JSON object only.' }] : parts }],
+              generationConfig: model.startsWith('gemma')
+                ? { temperature: 0 }
+                : { temperature: 0, responseMimeType: 'application/json', ...(schema ? { responseSchema: schema } : {}) },
+            }),
+          });
+        let r = await call();
+        // "High demand" (503) usually clears within a second or two; quota errors (429) do not, so only 503 is retried.
+        if (r.status === 503 && deadline - Date.now() > 8000) {
+          await new Promise((res) => setTimeout(res, 1500));
+          r = await call();
+        }
         if (!r.ok) throw new Error(`${model} ${r.status}`);
         const j = (await r.json()) as { candidates?: { content?: { parts?: { text?: string; thought?: boolean }[] } }[] };
         const out = (j.candidates?.[0]?.content?.parts ?? []).filter((p) => !p.thought && p.text).map((p) => p.text).join('');

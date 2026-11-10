@@ -10,8 +10,10 @@ const ELEMENT_LABEL: Record<string, string> = {
 export function runCheck(check: CheckSpec, f: PageFacts): { pass: boolean; evidence: string } {
   switch (check.op) {
     case 'text_present': {
-      const hay = `${f.title}\n${f.visibleText}`.toLowerCase();
-      const hit = check.any.find((p) => hay.includes(p.toLowerCase()));
+      // Whitespace is normalised: markup often splits one phrase across lines ("$25" in bold, then the sentence).
+      const norm = (t: string) => t.toLowerCase().replace(/\s+/g, ' ').trim();
+      const hay = norm(`${f.title}\n${f.visibleText}`);
+      const hit = check.any.find((p) => hay.includes(norm(p)));
       return hit
         ? { pass: true, evidence: `Found "${hit}" in the visible page text.` }
         : { pass: false, evidence: `None of ${check.any.map((p) => `"${p}"`).join(', ')} appear in the visible page text.` };

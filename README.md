@@ -49,22 +49,30 @@ We call the REST API directly. (At the time of building, PayPal's hosted sandbox
 |---|---|
 | Groq `openai/gpt-oss-120b` | Scope compiler: brief to milestones and typed acceptance criteria (JSON, validated with zod; Gemini fallback) |
 | Groq `meta-llama/llama-prompt-guard-2-86m` | Scores hidden text, comments, attributes and visible text for prompt attacks |
-| Google Gemini (`gemini-3.5-flash`, falls back to `gemini-3-flash-preview`, `gemini-3.1-flash-lite`) | Multimodal judge: desktop and mobile screenshots plus page text, returns pass, confidence and evidence per criterion |
+| Google Gemini (`gemini-3.5-flash`, then `gemini-3-flash-preview`, `gemini-flash-lite-latest`, `gemini-3.1-flash-lite`, and Gemma `gemma-4-26b-a4b-it` on a separate free quota) | Multimodal judge: desktop and mobile screenshots plus page text, returns pass, confidence and evidence per criterion |
 | Headless Chromium (puppeteer-core, `@sparticuz/chromium` on Vercel) | Loads the delivered page, measures it, captures evidence |
 
 Sponsor tools: **Bryntum Gantt** (milestone timeline chained by dependencies, coloured by payment state, progress = share captured by PayPal).
 
 ## Try the live demo
 
-1. Open https://proof-of-done.vercel.app and click **Try the sample bakery project**, then **Load the sample bakery brief** and **Compile**.
-2. As the **Client**, click **Pay with PayPal** on Milestone 1 and approve with the sandbox buyer account given in the Devpost testing instructions. The ledger shows the authorization ID.
-3. Switch to **Freelancer**, pick **First draft**, click **Inspect and get paid**. Some criteria fail with evidence; PayPal captures only the passed share.
-4. Pick **Fixed version** and inspect again. The rest is captured and the authorization closes.
-5. Fund Milestone 2 and submit the **Menu page**: the hidden instruction to the AI reviewer is detected and payment freezes. As the Client, approve or reject the held criteria.
-6. Fund Milestone 3, switch to Client, and click **Deadline passed: void and release**. The hold is voided.
-7. Press **Verify with PayPal** in the ledger to read the order straight from PayPal.
+Open https://proof-of-done.vercel.app, click **Try a sample project**, and pick one of two samples (fictional organisations), each with demo deliveries ready:
 
-The demo businesses (Larkhill Loaves) are fictional.
+| Sample | Client | Shows |
+|---|---|---|
+| **Bakery website** | Small business, 3 deliverables, $600 | A first draft fails (no tap-to-call link, no hours, not phone ready), the fix is captured, and the menu page hides an instruction to the AI reviewer, which freezes payment |
+| **Food bank campaign** | Nonprofit, 2 deliverables, $840 | Accessibility gaps (images without alt text) block payment until fixed; the volunteer form passes on the first try |
+
+Then follow the **Next step** box:
+
+1. As the **Client**, click **Pay with PayPal** and approve with the sandbox buyer account given in the Devpost testing instructions. The ledger shows the authorization ID; nobody is charged yet.
+2. Switch to **Freelancer**, pick a demo delivery, click **Inspect and get paid**. Failed criteria show evidence; PayPal captures only the passed share.
+3. Submit the fixed delivery. The rest is captured and the authorization closes.
+4. On a page that tries to manipulate the reviewer, payment freezes. As the Client, approve or reject each held criterion.
+5. On any funded milestone, **Deadline passed: void and release the rest** voids the authorization.
+6. **Verify with PayPal** in the ledger reads the order straight from PayPal.
+
+You can also write your own brief; numbered deliverables become exactly that many milestones.
 
 ## Run it locally
 
@@ -91,13 +99,13 @@ Results from the committed run in [results/metrics.json](results/metrics.json) (
 
 | Measure | Result |
 |---|---|
-| Criteria judged correctly | 59 of 60 |
+| Criteria judged correctly | 60 of 60 (earlier runs: 59 of 60, see below) |
 | Code checks correct | 48 of 48 |
-| AI judged criteria correct | 5 of 6 (one subjective criterion flips between runs) |
+| AI judged criteria correct | 6 of 6 (one subjective criterion has flipped in earlier runs) |
 | Pages with hidden injections flagged | 6 of 6 (off-screen div, HTML comment, white-on-white text) |
 | Clean pages wrongly flagged | 0 of 6 |
 | Would-pass criteria frozen on injection pages | 24 of 24 |
-| Inspection time | median 6.0 s, max 13.1 s |
+| Inspection time | median 5.0 s, max 7.9 s |
 
 Two bugs were found by this evaluation and fixed with regression tests: a page with no viewport meta tag passed the phone-fit check, and the phrase "AI assistant" in normal copy was flagged as an injection. Prompt Guard alone scored the HTML-comment attack at 0.001; the pattern rules caught it, which is why both detectors run. The set is small and built by the author, so treat these as behaviour on these pages, not general accuracy.
 

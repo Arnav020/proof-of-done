@@ -88,6 +88,8 @@ export type Project = {
   currency: 'USD';
   total: number;
   createdAt: string;
+  /** Which seeded sample this project came from, if any (selects its demo deliveries). */
+  sampleId?: 'bakery' | 'foodbank';
   milestones: Milestone[];
   events: LedgerEvent[];
 };

@@ -18,7 +18,9 @@ export const env = {
   paypalEnv: process.env.PAYPAL_ENVIRONMENT ?? 'SANDBOX',
   geminiKey: process.env.GEMINI_API_KEY ?? '',
   groqKey: process.env.GROQ_API_KEY ?? '',
-  geminiModels: list(process.env.GEMINI_MODELS, 'gemini-3.5-flash,gemini-3-flash-preview,gemini-3.1-flash-lite'),
+  // Ordered fallbacks. Quota errors fail in under a second, so later models still fit the time budget.
+  // Gemma runs on a separate free quota and reads screenshots too.
+  geminiModels: list(process.env.GEMINI_MODELS, 'gemini-3.5-flash,gemini-3-flash-preview,gemini-flash-lite-latest,gemini-3.1-flash-lite,gemma-4-26b-a4b-it'),
   groqModel: process.env.GROQ_MODEL ?? 'openai/gpt-oss-120b',
   guardModel: process.env.GROQ_GUARD_MODEL ?? 'meta-llama/llama-prompt-guard-2-86m',
   stateSecret,

@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Winter food boxes | Riverbend Food Share</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: 'Trebuchet MS', Arial, sans-serif; background: #f2f7f5; color: #12332b; }
+  header { padding: 20px 6vw; display: flex; justify-content: space-between; align-items: center; }
+  header b { font-size: 22px; }
+  .hero { display: grid; grid-template-columns: 1.1fr 1fr; gap: 40px; padding: 24px 6vw 48px; align-items: center; }
+  h1 { font-size: clamp(32px, 5vw, 52px); line-height: 1.08; margin: 0 0 16px; }
+  p { font-size: 18px; line-height: 1.6; }
+  .donate { display: inline-block; background: #0f766e; color: #fff; padding: 14px 26px; border-radius: 10px; text-decoration: none; font-weight: bold; }
+  .donate:focus-visible { outline: 3px solid #f59e0b; outline-offset: 3px; }
+  .progress { margin: 20px 0 24px; }
+  .bar { height: 14px; background: #cfe8df; border-radius: 99px; overflow: hidden; }
+  .bar span { display: block; height: 100%; width: 62%; background: #0f766e; }
+  .raised { font-size: 18px; margin: 8px 0 0; }
+  .impact { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; padding: 32px 6vw 56px; }
+  .impact div { background: #fff; border-radius: 14px; padding: 20px; }
+  .impact b { font-size: 26px; color: #0f766e; display: block; }
+  footer { padding: 24px 6vw; font-size: 14px; color: #3f5f57; }
+  @media (max-width: 720px) { .hero, .impact { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+  <header><b>Riverbend Food Share</b><span>Volunteer run since 2014</span></header>
+  <section class="hero">
+    <div>
+      <h1>Help us fill 480 winter food boxes.</h1>
+      <p>Our goal is to raise $12,000 before December so every family on our list gets a box of staples, fresh vegetables and a hot meal kit.</p>
+      <div class="progress" role="group" aria-label="Fundraising progress">
+        <div class="bar" aria-hidden="true"><span></span></div>
+        <p class="raised"><strong>$7,460 raised so far</strong> of our $12,000 goal, from 213 neighbours.</p>
+      </div>
+      <a class="donate" href="#give">Donate</a>
+    </div>
+    <svg viewBox="0 0 400 260" width="100%" role="img" aria-label="Illustration of a food box filled with oranges, apples and greens">
+      <rect width="400" height="260" rx="22" fill="#cfe8df"/>
+      <rect x="110" y="110" width="180" height="110" rx="10" fill="#0f766e"/>
+      <rect x="110" y="96" width="180" height="26" rx="8" fill="#115e59"/>
+      <circle cx="160" cy="88" r="22" fill="#f59e0b"/><circle cx="205" cy="80" r="18" fill="#84cc16"/><circle cx="245" cy="90" r="20" fill="#ef4444"/>
+    </svg>
+  </section>
+  <section class="impact" id="give" aria-label="What your donation buys">
+    <div><b>$25</b>feeds a family for a week</div>
+    <div><b>$60</b>fills one winter food box</div>
+    <div><b>$150</b>stocks our fresh produce shelf for a day</div>
+  </section>
+  <svg viewBox="0 0 1200 160" width="100%" style="display:block" role="img" aria-label="Decorative band showing four volunteers handing out food boxes">
+    <rect width="1200" height="160" fill="#0f766e"/>
+    <g fill="#99f6e4"><circle cx="200" cy="80" r="40"/><circle cx="420" cy="80" r="40"/><circle cx="640" cy="80" r="40"/><circle cx="860" cy="80" r="40"/></g>
+  </svg>
+  <footer>Riverbend Food Share is a fictional organisation used for the Proof of Done demo.</footer>
+</body>
+</html>

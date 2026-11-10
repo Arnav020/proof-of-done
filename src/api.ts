@@ -28,7 +28,8 @@ async function call<T>(method: 'GET' | 'POST', path: string, body?: unknown): Pr
 export const api = {
   health: () => call<{ ok: boolean; paypal: boolean; gemini: boolean; groq: boolean; mode: string }>('GET', '/api/health'),
   clientToken: () => call<{ clientToken: string }>('POST', '/api/paypal/client-token', {}),
-  compile: (brief: string, price: number) => call<Signed & { model: string }>('POST', '/api/scope/compile', { brief, price }),
+  compile: (brief: string, price: number, extra: { clientName?: string; freelancerName?: string; sampleId?: string } = {}) =>
+    call<Signed & { model: string }>('POST', '/api/scope/compile', { brief, price, ...extra }),
   order: (s: Signed, mid: string) => call<{ orderId: string; approveUrl?: string }>('POST', `/api/milestones/${mid}/order`, s),
   authorize: (s: Signed, mid: string, orderId: string) => call<Signed>('POST', `/api/milestones/${mid}/authorize`, { ...s, orderId }),
   inspect: (s: Signed, mid: string, url: string) => call<Signed & { report: InspectionReport }>('POST', `/api/milestones/${mid}/inspect`, { ...s, url }),

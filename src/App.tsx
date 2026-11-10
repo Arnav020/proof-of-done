@@ -1,7 +1,7 @@
 import { ArrowCounterClockwise, ArrowLeft, ArrowRight, Briefcase, CheckCircle, Code, User, WarningCircle } from '@phosphor-icons/react';
 import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { api, store, usd, type InspectionReport, type Signed } from './api';
-import { Composer } from './components/Composer';
+import { Composer, type CompileExtra } from './components/Composer';
 import { routeOf } from './route';
 import { PENDING_KEY } from './components/FundButton';
 import { Intro } from './components/Intro';
@@ -82,10 +82,10 @@ export default function App() {
       .finally(() => { setBusy(null); localStorage.removeItem(PENDING_KEY); });
   }, [update, fail]);
 
-  const compile = async (brief: string, price: number) => {
+  const compile = async (brief: string, price: number, extra: CompileExtra = {}) => {
     setBusy('compile');
     try {
-      const r = await api.compile(brief, price);
+      const r = await api.compile(brief, price, extra);
       update({ project: r.project, sig: r.sig });
       setMid('m1');
       setReports({});

@@ -1,6 +1,7 @@
 import { ArrowCounterClockwise, CheckCircle, Clock, Code, HourglassMedium, Link, Lock, Prohibit, Sparkle, XCircle } from '@phosphor-icons/react';
 import { useState } from 'react';
 import { usd, type InspectionReport, type Project, type Signed } from '../api';
+import { SAMPLES } from '../../scripts/demo-data';
 import { FundButton } from './FundButton';
 import { Report } from './Report';
 
@@ -43,12 +44,8 @@ export function MilestonePanel({ signed, m, role, report, busy, demoBase, onFund
   const st = STATUS[m.status];
   const open = m.status !== 'voided' && m.status !== 'paid';
   const funded = !!m.payment.authorizationId;
-  const samples =
-    m.index === 0
-      ? [{ label: 'First draft', path: '/demo-sites/larkhill-v1/index.html' }, { label: 'Fixed version', path: '/demo-sites/larkhill-v2/index.html' }]
-      : m.index === 1
-        ? [{ label: 'Menu page', path: '/demo-sites/larkhill-menu/index.html' }]
-        : [];
+  const sample = SAMPLES.find((s) => s.id === (signed.project.sampleId ?? 'bakery'));
+  const samples = sample?.deliveries[m.index] ?? [];
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();

@@ -63,6 +63,7 @@ const compileBody = z.object({
   price: z.number().min(50).max(10000),
   clientName: z.string().trim().max(60).optional(),
   freelancerName: z.string().trim().max(60).optional(),
+  sampleId: z.enum(['bakery', 'foodbank']).optional(),
 });
 
 app.post('/api/scope/compile', limit(8, 'compile'), h(async (req, res) => {
@@ -71,8 +72,9 @@ app.post('/api/scope/compile', limit(8, 'compile'), h(async (req, res) => {
   const { plan, model } = await compileScope(b.data.brief);
   const project = buildProject(plan, {
     brief: b.data.brief, price: b.data.price,
-    clientName: b.data.clientName || 'Maple Street Bakery', freelancerName: b.data.freelancerName || 'Riya (freelance web dev)',
+    clientName: b.data.clientName || 'The client', freelancerName: b.data.freelancerName || 'the freelancer',
   });
+  if (b.data.sampleId) project.sampleId = b.data.sampleId;
   res.json({ ...wrap(project), model });
 }));
 

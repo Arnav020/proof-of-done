@@ -246,3 +246,21 @@ describe('independent review fixes', () => {
     expect(a.length).toBeLessThanOrEqual(108);
   });
 });
+
+describe('text checks ignore line breaks from markup', () => {
+  it('matches a phrase split across elements', () => {
+    expect(runCheck({ op: 'text_present', any: ['$25 feeds a family for a week'] }, facts({ visibleText: 'What it buys\n$25\nfeeds a family for a week' })).pass).toBe(true);
+  });
+});
+
+describe('sample projects', () => {
+  it('each sample has demo deliveries for exactly its numbered deliverables, and every page exists', async () => {
+    const fs = await import('node:fs');
+    const { SAMPLES } = await import('../scripts/demo-data');
+    expect(new Set(SAMPLES.map((s) => s.id)).size).toBe(SAMPLES.length);
+    for (const s of SAMPLES) {
+      expect(s.deliveries.length).toBe(countDeliverables(s.brief));
+      for (const d of s.deliveries.flat()) expect(fs.existsSync(`public${d.path}`)).toBe(true);
+    }
+  });
+});

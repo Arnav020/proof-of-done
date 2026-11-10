@@ -38,7 +38,7 @@ export function nextStep(m: M, role: Role, total: number, setRole: (r: Role) => 
     };
   }
   return failed.length
-    ? { n: 2, title: `Fix ${failed.length} failing criteria and resubmit`, text: 'Only newly passing criteria are paid on the next inspection. Try the Fixed version demo link.' }
+    ? { n: 2, title: `Fix ${failed.length} failing criteria and resubmit`, text: 'Only newly passing criteria are paid on the next inspection. Try the fixed demo delivery below.' }
     : { n: 2, title: 'Submit your delivery for inspection', text: 'Paste the link (or pick a demo delivery) and press Inspect and get paid.' };
 }
 
