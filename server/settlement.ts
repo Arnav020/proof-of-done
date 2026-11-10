@@ -86,6 +86,19 @@ export async function voidMilestone(p: Project, m: Milestone) {
   p.events.push({ at: now(), type: 'voided', milestoneId: m.id, amount: released, paypalId: authId, status: auth.status, note: `Authorization voided: $${released.toFixed(2)} released back to the client, never charged` });
 }
 
+/** Human in the loop: the client resolves a criterion the Inspector held for review (low confidence or manipulation). */
+export function reviewCriterion(p: Project, m: Milestone, criterionId: string, decision: 'approve' | 'reject') {
+  const c = m.criteria.find((x) => x.id === criterionId);
+  if (!c || c.paid || !c.verdict?.needsReview) throw new ApiError(409, 'NOT_REVIEWABLE', 'Only criteria held for review can be approved or rejected.');
+  if (m.status === 'voided') throw new ApiError(409, 'VOIDED', 'This milestone was voided.');
+  const approve = decision === 'approve';
+  c.verdict = {
+    pass: approve, confidence: 1, source: 'client', needsReview: false, at: now(),
+    evidence: approve ? `Approved by the client after review. (Inspector said: ${c.verdict.evidence.slice(0, 160)})` : 'Rejected by the client after review.',
+  };
+  p.events.push({ at: now(), type: 'reviewed', milestoneId: m.id, amount: c.amount, note: `Client ${approve ? 'approved' : 'rejected'} "${c.title}"` });
+}
+
 export async function refundCriterion(p: Project, m: Milestone, criterionId: string) {
   const c = m.criteria.find((x) => x.id === criterionId);
   if (!c || !c.paid || c.refunded) throw new ApiError(409, 'NOT_REFUNDABLE', 'Only a paid criterion can be refunded.');

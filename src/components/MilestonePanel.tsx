@@ -1,4 +1,4 @@
-import { ArrowCounterClockwise, CheckCircle, Clock, Code, HourglassMedium, Link, Prohibit, Sparkle, XCircle } from '@phosphor-icons/react';
+import { ArrowCounterClockwise, CheckCircle, Clock, Code, HourglassMedium, Link, Lock, Prohibit, Sparkle, XCircle } from '@phosphor-icons/react';
 import { useState } from 'react';
 import { usd, type InspectionReport, type Project, type Signed } from '../api';
 import { FundButton } from './FundButton';
@@ -34,10 +34,11 @@ type Props = {
   onInspect: (url: string) => void;
   onVoid: () => void;
   onRefund: (cid: string) => void;
+  onReview: (cid: string, decision: 'approve' | 'reject') => void;
   onError: (msg: string) => void;
 };
 
-export function MilestonePanel({ signed, m, role, report, busy, demoBase, onFunded, onInspect, onVoid, onRefund, onError }: Props) {
+export function MilestonePanel({ signed, m, role, report, busy, demoBase, onFunded, onInspect, onVoid, onRefund, onReview, onError }: Props) {
   const [url, setUrl] = useState('');
   const st = STATUS[m.status];
   const open = m.status !== 'voided' && m.status !== 'paid';
@@ -87,6 +88,16 @@ export function MilestonePanel({ signed, m, role, report, busy, demoBase, onFund
                   {c.verdict.source === 'ai' && <span className="faint"> · confidence {c.verdict.confidence.toFixed(2)}</span>}
                 </div>
               )}
+              {role === 'client' && c.verdict?.needsReview && !c.paid && open && (
+                <div className="row" style={{ gap: 'var(--s-75)', marginTop: 'var(--s-75)' }}>
+                  <button className="btn btn-primary btn-sm" disabled={!!busy} onClick={() => onReview(c.id, 'approve')}>
+                    <CheckCircle size={14} /> Approve and pay {usd(c.amount)}
+                  </button>
+                  <button className="btn btn-sm" disabled={!!busy} onClick={() => onReview(c.id, 'reject')}>
+                    <XCircle size={14} /> Reject
+                  </button>
+                </div>
+              )}
               {role === 'client' && c.paid && !c.refunded && (
                 <button className="btn btn-ghost btn-sm" style={{ marginTop: 'var(--s-75)' }} disabled={!!busy} onClick={() => onRefund(c.id)}>
                   <ArrowCounterClockwise size={14} /> Dispute and refund {usd(c.amount)}
@@ -102,14 +113,24 @@ export function MilestonePanel({ signed, m, role, report, busy, demoBase, onFund
         <FundButton signed={signed} mid={m.id} amount={m.amount} onFunded={onFunded} onError={onError} />
       )}
 
-      {role === 'client' && funded && open && (
-        <div className="row" style={{ justifyContent: 'space-between' }}>
-          <span className="caption-5 muted">
-            Authorization <span className="mono">{m.payment.authorizationId}</span> holds {usd((m.payment.authorizedAmount ?? 0) - m.payment.captured)}.
-          </span>
-          <button className="btn btn-sm btn-danger" disabled={!!busy} onClick={onVoid}>
-            <Prohibit size={14} /> Deadline passed: void and release
-          </button>
+      {funded && m.status !== 'voided' && (
+        <div className="alert ok">
+          <Lock size={20} weight="fill" className="lime" />
+          <div className="stack" style={{ gap: 'var(--s-75)' }}>
+            <div>
+              <div className="title-4 lime">Funds secured by PayPal</div>
+              <div className="body-6 muted">
+                Authorization <span className="mono">{m.payment.authorizationId}</span> holds{' '}
+                <span className="mono">{usd((m.payment.authorizedAmount ?? 0) - m.payment.captured)}</span> on the client's PayPal account.
+                {m.payment.captured > 0 ? ` ${usd(m.payment.captured)} already captured for verified work.` : ' Nothing has been charged yet.'}
+              </div>
+            </div>
+            {role === 'client' && open && (
+              <button className="btn btn-sm btn-danger" style={{ justifySelf: 'start' }} disabled={!!busy} onClick={onVoid}>
+                <Prohibit size={14} /> Deadline passed: void and release the rest
+              </button>
+            )}
+          </div>
         </div>
       )}
 

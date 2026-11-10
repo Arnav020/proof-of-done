@@ -5,7 +5,7 @@ import { env } from './env.js';
 import { ApiError } from './errors.js';
 import { capturePage, inspectMilestone } from './inspector.js';
 import * as paypal from './paypal.js';
-import { authorizeMilestone, refundCriterion, settleMilestone, voidMilestone } from './settlement.js';
+import { authorizeMilestone, refundCriterion, reviewCriterion, settleMilestone, voidMilestone } from './settlement.js';
 import { findMilestone, unwrap, wrap } from './state.js';
 
 export const app = express();
@@ -136,6 +136,19 @@ app.post('/api/milestones/:mid/void', limit(20), h(async (req, res) => {
   const m = findMilestone(p, String(req.params.mid));
   await voidMilestone(p, m);
   res.json(wrap(p));
+}));
+
+const reviewBody = z.object({ criterionId: z.string().max(20), decision: z.enum(['approve', 'reject']) });
+
+/** Client resolves a held criterion; an approval is captured from the PayPal authorization right away. */
+app.post('/api/milestones/:mid/review', limit(20), h(async (req, res) => {
+  const p = unwrap(req.body);
+  const m = findMilestone(p, String(req.params.mid));
+  const b = reviewBody.safeParse(req.body);
+  if (!b.success) throw new ApiError(400, 'BAD_INPUT', 'criterionId and decision are required.');
+  reviewCriterion(p, m, b.data.criterionId, b.data.decision);
+  const capture = b.data.decision === 'approve' ? await settleMilestone(p, m) : null;
+  res.json({ ...wrap(p), capture });
 }));
 
 app.post('/api/milestones/:mid/refund', limit(20), h(async (req, res) => {

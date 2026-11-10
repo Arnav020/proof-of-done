@@ -4,6 +4,7 @@ import { api, store, usd, type InspectionReport, type Signed } from './api';
 import { Composer } from './components/Composer';
 import { PENDING_KEY } from './components/FundButton';
 import { Intro } from './components/Intro';
+import { Guide, nextStep, RolePicker } from './components/Guide';
 import { Ledger } from './components/Ledger';
 import { MilestonePanel, STATUS } from './components/MilestonePanel';
 
@@ -29,7 +30,7 @@ export default function App() {
 
   useEffect(() => {
     if (!toast) return;
-    const t = setTimeout(() => setToast(null), toast.kind === 'bad' ? 9000 : 6000);
+    const t = setTimeout(() => setToast(null), toast.kind === 'bad' ? 12000 : 9000);
     return () => clearTimeout(t);
   }, [toast]);
 
@@ -122,8 +123,24 @@ export default function App() {
     }
   };
 
+  const review = async (cid: string, decision: 'approve' | 'reject') => {
+    if (!signed) return;
+    setBusy('review');
+    try {
+      const r = await api.review(signed, mid, cid, decision);
+      update({ project: r.project, sig: r.sig });
+      if (r.capture) ok(`Approved. PayPal captured ${usd(r.capture.amount)} (capture ${r.capture.id}${r.capture.final ? ', final' : ''}).`);
+      else ok(decision === 'approve' ? 'Approved. It will be paid with the rest of the milestone.' : 'Rejected. That amount stays held and is not paid.');
+    } catch (e) {
+      fail(e instanceof Error ? e.message : 'Review failed.');
+    } finally {
+      setBusy(null);
+    }
+  };
+
   const p = signed?.project;
   const m = p?.milestones.find((x) => x.id === mid) ?? p?.milestones[0];
+  const nextMilestone = p && m && m.index < p.milestones.length - 1 ? () => setMid(p.milestones[m.index + 1].id) : null;
 
   return (
     <>
@@ -132,10 +149,12 @@ export default function App() {
           <img src="/favicon.svg" width={24} height={24} alt="" />
           <span>Proof of Done</span>
         </a>
-        <div className="role" role="group" aria-label="View as">
-          <button aria-pressed={role === 'client'} onClick={() => setRole('client')}><Briefcase size={14} /> Client</button>
-          <button aria-pressed={role === 'freelancer'} onClick={() => setRole('freelancer')}><User size={14} /> Freelancer</button>
-        </div>
+        {p && (
+          <div className="role" role="group" aria-label="View as">
+            <button aria-pressed={role === 'client'} onClick={() => setRole('client')}><Briefcase size={14} /> Client</button>
+            <button aria-pressed={role === 'freelancer'} onClick={() => setRole('freelancer')}><User size={14} /> Freelancer</button>
+          </div>
+        )}
         <a className="btn btn-ghost btn-sm" href="https://github.com/Arnav020/proof-of-done" target="_blank" rel="noreferrer" aria-label="Source code on GitHub">
           <GithubLogo size={18} />
         </a>
@@ -167,6 +186,12 @@ export default function App() {
             <Composer busy={busy === 'compile'} onCompile={compile} />
           ) : (
             <div className="stack">
+              <RolePicker role={role} onRole={setRole} />
+              {m && <Guide step={nextStep(m, role, p.milestones.length, setRole, nextMilestone)} />}
+              <div className="section-label">
+                <span className="title-4">Milestones</span>
+                <span className="caption-5 muted">Each milestone has its own PayPal hold. Select one to work on it.</span>
+              </div>
               <div className="ms-tabs" role="tablist" aria-label="Milestones">
                 {p.milestones.map((x) => (
                   <button key={x.id} role="tab" aria-selected={x.id === m?.id} className="ms-tab" onClick={() => setMid(x.id)}>
@@ -179,6 +204,10 @@ export default function App() {
                     <span className="mono caption-4 muted">{usd(x.payment.captured)} of {usd(x.amount)} captured</span>
                   </button>
                 ))}
+              </div>
+              <div className="section-label">
+                <span className="title-4">Timeline</span>
+                <span className="caption-5 muted">Bars fill as PayPal captures money. A milestone that is not paid holds back the next one.</span>
               </div>
               <Suspense fallback={<div className="skeleton gantt-box" />}>
                 <Timeline project={p} />
@@ -197,6 +226,7 @@ export default function App() {
                     onInspect={inspect}
                     onVoid={voidIt}
                     onRefund={refund}
+                    onReview={review}
                     onError={fail}
                   />
                 )}

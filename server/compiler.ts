@@ -121,8 +121,18 @@ export function buildProject(plan: RawPlan, args: { brief: string; price: number
   };
 }
 
+/** Counts deliverables the client numbered ("1)", "2.", ...). 0 means the brief did not enumerate them. */
+export function countDeliverables(brief: string): number {
+  const nums = [...brief.matchAll(/^\s*(\d{1,2})\s*[).:-]\s+\S/gm)].map((m) => Number(m[1]));
+  const distinct = new Set(nums);
+  return distinct.size >= 2 && distinct.size <= 4 && distinct.has(1) ? distinct.size : 0;
+}
+
 export async function compileScope(brief: string): Promise<{ plan: RawPlan; model: string }> {
-  const user = `<brief>\n${brief}\n</brief>`;
+  const expected = countDeliverables(brief);
+  // The client's own numbering is a contract: models sometimes merge deliverables, so it is enforced, not suggested.
+  const rule = expected ? `\nThe brief numbers ${expected} deliverables. Produce exactly ${expected} milestones, one per numbered deliverable, in the same order.` : '';
+  const user = `<brief>\n${brief}\n</brief>${rule}`;
   const attempts: { name: string; run: () => Promise<string> }[] = [
     { name: 'groq', run: () => groqChat({ json: true, messages: [{ role: 'system', content: SYSTEM }, { role: 'user', content: user }] }) },
     { name: 'gemini', run: async () => (await geminiJson([{ text: `${SYSTEM}\n\n${user}` }])).text },
@@ -132,8 +142,8 @@ export async function compileScope(brief: string): Promise<{ plan: RawPlan; mode
     for (let tries = 0; tries < 2; tries++) {
       try {
         const parsed = rawPlan.safeParse(parseJson(await a.run()));
-        if (parsed.success) return { plan: parsed.data, model: a.name };
-        last = parsed.error.issues[0]?.message ?? 'schema mismatch';
+        if (parsed.success && (!expected || parsed.data.milestones.length === expected)) return { plan: parsed.data, model: a.name };
+        last = parsed.success ? `expected ${expected} milestones, got ${parsed.data.milestones.length}` : parsed.error.issues[0]?.message ?? 'schema mismatch';
       } catch (e) {
         last = e instanceof Error ? e.message : String(e);
       }

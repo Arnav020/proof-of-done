@@ -10,6 +10,7 @@ const ICON = {
   captured: <CheckCircle size={18} weight="fill" className="lime" />,
   refunded: <ArrowCounterClockwise size={18} className="amber" />,
   voided: <Prohibit size={18} className="amber" />,
+  reviewed: <CheckCircle size={18} className="amber" />,
 } as const;
 
 export function Ledger({ project }: { project: Project }) {
@@ -43,6 +44,9 @@ export function Ledger({ project }: { project: Project }) {
         <h3 className="heading-6">Money ledger</h3>
         <span className="chip idle mono">PayPal sandbox</span>
       </div>
+      <p className="caption-5 muted" style={{ marginTop: 'calc(var(--s-100) * -1)' }}>
+        Every hold, capture, refund and void, newest first, with the real PayPal IDs. Use Verify to read them back from PayPal.
+      </p>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--s-100)' }}>
         <div><div className="caption-3 muted">Held</div><div className="mono title-2">{usd(totals.held)}</div></div>
         <div><div className="caption-3 muted">Captured</div><div className="mono title-2 lime">{usd(totals.captured)}</div></div>

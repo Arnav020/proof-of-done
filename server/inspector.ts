@@ -164,7 +164,12 @@ export async function inspectMilestone(m: Milestone, url: string, brief: string)
   }
   for (const c of pending.filter((c) => c.kind === 'deterministic' && c.check)) {
     const r = runCheck(c.check!, facts);
-    details.push({ criterionId: c.id, title: c.title, kind: c.kind, pass: r.pass, confidence: 1, evidence: r.evidence, source: 'code', needsReview: false });
+    // A page that tries to manipulate the reviewer is a fraud signal: even verified checks wait for the client.
+    const freeze = injection.flagged && r.pass;
+    details.push({
+      criterionId: c.id, title: c.title, kind: c.kind, pass: r.pass && !freeze, confidence: 1, source: 'code', needsReview: freeze,
+      evidence: freeze ? `${r.evidence} Payment frozen: this page tried to manipulate the reviewer, so the client decides.` : r.evidence,
+    });
   }
 
   const aiCriteria = pending.filter((c) => !(c.kind === 'deterministic' && c.check));

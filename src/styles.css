@@ -84,11 +84,21 @@ a { color: inherit; }
 .role button[aria-pressed='true'] { background: var(--text); color: var(--bg); }
 
 /* Hero */
-.hero { padding: 160px 0 var(--s-800); display: grid; grid-template-columns: 1.05fr 1fr; gap: var(--s-700); align-items: center; }
+.hero { min-height: 100vh; min-height: 100svh; padding: var(--s-900) 0 var(--s-600); display: grid; grid-template-columns: 1.05fr 1fr; gap: var(--s-700); align-items: center; }
 .hero h1, .hero .sub { max-width: 680px; }
 .hero .sub { margin-top: var(--s-300); color: var(--muted); font-size: 18px; line-height: 28px; }
 .hero .actions { margin-top: var(--s-400); display: flex; gap: var(--s-200); align-items: center; flex-wrap: wrap; }
 .proof-line { display: flex; align-items: center; gap: var(--s-75); color: var(--muted); }
+
+/* Guide and role picker */
+.guide { display: grid; grid-template-columns: 24px 1fr auto; gap: var(--s-200); align-items: center; padding: var(--s-200) var(--s-300); border-radius: var(--r-2xl); border: 1px solid rgba(212, 242, 90, 0.35); background: rgba(212, 242, 90, 0.05); }
+.role-picker { display: grid; gap: var(--s-100); }
+.role-cards { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-200); }
+.role-card { text-align: left; display: grid; gap: var(--s-50); padding: var(--s-200); border-radius: var(--r-2xl); border: 1px solid var(--line); background: var(--surface); cursor: pointer; transition: border-color 300ms var(--ease), transform 300ms var(--ease); }
+.role-card:hover { transform: translateY(-2px); }
+.role-card[aria-checked='true'] { border-color: var(--lime); background: rgba(212, 242, 90, 0.06); }
+.role-card[aria-checked='true'] .title-3 { color: var(--lime); }
+.section-label { display: flex; justify-content: space-between; align-items: baseline; gap: var(--s-200); flex-wrap: wrap; margin-bottom: var(--s-100); }
 
 /* Receipt visual */
 .receipt { padding: var(--s-300); border-radius: var(--r-3xl); background: var(--surface); border: 1px solid var(--line); }
@@ -151,7 +161,10 @@ footer.site { border-top: 1px solid var(--line); padding: var(--s-400) 0; displa
 .reveal.in { opacity: 1; transform: none; }
 
 @media (max-width: 900px) {
-  .hero { grid-template-columns: 1fr; padding-top: 128px; gap: var(--s-500); }
+  .hero { grid-template-columns: 1fr; padding-top: 128px; gap: var(--s-500); min-height: auto; }
+  .role-cards { grid-template-columns: 1fr; }
+  .guide { grid-template-columns: 24px 1fr; }
+  .guide .btn { grid-column: 2; justify-self: start; }
   .heading-1 { font-size: 48px; line-height: 48px; }
   .heading-2 { font-size: 36px; line-height: 40px; }
   .steps, .grid-2 { grid-template-columns: 1fr; }

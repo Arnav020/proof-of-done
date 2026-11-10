@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { runCheck } from '../server/checks';
-import { buildProject, splitAmounts } from '../server/compiler';
+import { buildProject, countDeliverables, splitAmounts } from '../server/compiler';
+import { DEMO_BRIEF } from '../scripts/demo-data';
 import { PATTERNS, segmentsOf } from '../server/injection';
 import { clientTokenBody, capturedOnOrder, type PPOrder } from '../server/paypal';
-import { earnedAmount, planCapture } from '../server/settlement';
+import { earnedAmount, planCapture, reviewCriterion } from '../server/settlement';
 import { canonical, sign, unwrap, wrap } from '../server/state';
 import { isPrivateIp } from '../server/urlguard';
 import { facts, milestone } from './fixtures';
@@ -146,6 +147,46 @@ describe('injection patterns', () => {
     const segs = segmentsOf(facts({ hiddenText: ['hidden one'], comments: ['comment one'] }));
     expect(segs[0].where).toBe('hidden text');
     expect(segs[1].where).toBe('HTML comment');
+  });
+});
+
+describe('countDeliverables (client numbering is a contract)', () => {
+  it('counts numbered deliverables', () => {
+    expect(countDeliverables('Site:\n1) Homepage\n2) Menu page\n3) Pre-order page')).toBe(3);
+    expect(countDeliverables('1. Logo\n2. Landing page')).toBe(2);
+  });
+  it('ignores briefs without enumeration or with numbers in prose', () => {
+    expect(countDeliverables('A homepage with hours, 3 photos and 2 buttons.')).toBe(0);
+    expect(countDeliverables('Open 7 days.\n14 Larkhill Road')).toBe(0);
+  });
+  it('matches the demo brief', () => {
+    expect(countDeliverables(DEMO_BRIEF)).toBe(3);
+  });
+});
+
+describe('client review (human in the loop)', () => {
+  const proj = () => buildProject({ title: 'T', milestones: [{ title: 'A', summary: 's', share: 100, durationDays: 1, criteria: [
+    { title: 'a', description: 'd', kind: 'visual', weight: 1 }, { title: 'b', description: 'd', kind: 'visual', weight: 1 },
+  ] }] }, { brief: 'b', price: 100, clientName: 'C', freelancerName: 'F' });
+  it('approving a held criterion makes it earned', () => {
+    const p = proj();
+    const m = p.milestones[0];
+    m.criteria[0].verdict = { pass: false, confidence: 0.4, evidence: 'unsure', source: 'ai', needsReview: true, at: '' };
+    reviewCriterion(p, m, m.criteria[0].id, 'approve');
+    expect(m.criteria[0].verdict).toMatchObject({ pass: true, needsReview: false, source: 'client' });
+    expect(earnedAmount(m)).toBe(50);
+    expect(p.events.at(-1)?.type).toBe('reviewed');
+  });
+  it('rejecting keeps the money held', () => {
+    const p = proj();
+    const m = p.milestones[0];
+    m.criteria[1].verdict = { pass: false, confidence: 1, evidence: 'frozen', source: 'code', needsReview: true, at: '' };
+    reviewCriterion(p, m, m.criteria[1].id, 'reject');
+    expect(earnedAmount(m)).toBe(0);
+  });
+  it('refuses to review a criterion that was not held', () => {
+    const p = proj();
+    expect(() => reviewCriterion(p, p.milestones[0], p.milestones[0].criteria[0].id, 'approve')).toThrow(/held/);
   });
 });
 

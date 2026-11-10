@@ -34,6 +34,8 @@ export const api = {
   inspect: (s: Signed, mid: string, url: string) => call<Signed & { report: InspectionReport }>('POST', `/api/milestones/${mid}/inspect`, { ...s, url }),
   settle: (s: Signed, mid: string) => call<Signed & { capture: unknown }>('POST', `/api/milestones/${mid}/settle`, s),
   void: (s: Signed, mid: string) => call<Signed>('POST', `/api/milestones/${mid}/void`, s),
+  review: (s: Signed, mid: string, criterionId: string, decision: 'approve' | 'reject') =>
+    call<Signed & { capture: { id: string; amount: number; final: boolean } | null }>('POST', `/api/milestones/${mid}/review`, { ...s, criterionId, decision }),
   refund: (s: Signed, mid: string, criterionId: string) => call<Signed>('POST', `/api/milestones/${mid}/refund`, { ...s, criterionId }),
   verifyOrder: (orderId: string) =>
     call<{ id: string; status: string; authorizations: { id: string; status: string; amount: string }[]; captures: { id: string; status: string; amount: string }[] }>(

@@ -14,7 +14,7 @@ export type Verdict = {
   pass: boolean;
   confidence: number;
   evidence: string;
-  source: 'code' | 'ai' | 'guard';
+  source: 'code' | 'ai' | 'guard' | 'client';
   needsReview: boolean;
   at: string;
 };
@@ -70,7 +70,7 @@ export type Milestone = {
 
 export type LedgerEvent = {
   at: string;
-  type: 'created' | 'authorized' | 'captured' | 'refunded' | 'voided' | 'inspected' | 'flagged';
+  type: 'created' | 'authorized' | 'captured' | 'refunded' | 'voided' | 'inspected' | 'flagged' | 'reviewed';
   milestoneId?: string;
   amount?: number;
   paypalId?: string;
