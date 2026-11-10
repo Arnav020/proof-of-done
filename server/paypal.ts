@@ -25,9 +25,15 @@ export async function accessToken(): Promise<string> {
 }
 
 /** Browser-safe client token for PayPal JS SDK v6, bound to the requesting domain. */
-export async function clientToken(domain: string): Promise<string> {
+export function clientTokenBody(domain: string): URLSearchParams {
   const body = new URLSearchParams({ grant_type: 'client_credentials', response_type: 'client_token', intent: 'sdk_init' });
-  body.append('domains[]', domain);
+  // PayPal rejects "localhost" and bare IPs as token domains, so bind only real hostnames (the deployed site).
+  if (domain.includes('.') && !/^[\d.]+$/.test(domain)) body.append('domains[]', domain);
+  return body;
+}
+
+export async function clientToken(domain: string): Promise<string> {
+  const body = clientTokenBody(domain);
   const r = await fetch(`${env.paypalBase}/v1/oauth2/token`, {
     method: 'POST',
     headers: { Authorization: `Basic ${basic()}`, 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -75,6 +81,7 @@ export type PPCapture = {
 export type PPOrder = {
   id: string;
   status: string;
+  links?: { href: string; rel: string }[];
   purchase_units: {
     reference_id?: string;
     amount: PPAmount;

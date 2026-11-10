@@ -68,11 +68,13 @@ app.post('/api/milestones/:mid/order', limit(20), h(async (req, res) => {
   const p = unwrap(req.body);
   const m = findMilestone(p, String(req.params.mid));
   if (m.payment.authorizationId) throw new ApiError(409, 'ALREADY_FUNDED', 'This milestone is already funded.');
-  const origin = `${req.protocol}://${req.get('host')}`;
+  const host = (req.headers['x-forwarded-host'] as string | undefined)?.split(',')[0] ?? req.get('host');
+  const proto = (req.headers['x-forwarded-proto'] as string | undefined)?.split(',')[0] ?? req.protocol;
   const order = await paypal.createAuthorizeOrder({
-    amount: m.amount, referenceId: m.id, customId: p.id, description: `${p.title}: ${m.title}`, returnUrl: origin,
+    amount: m.amount, referenceId: m.id, customId: p.id, description: `${p.title}: ${m.title}`, returnUrl: `${proto}://${host}/?paypal_return=${m.id}`,
   });
-  res.json({ orderId: order.id });
+  const approveUrl = order.links?.find((l) => l.rel === 'payer-action' || l.rel === 'approve')?.href;
+  res.json({ orderId: order.id, approveUrl });
 }));
 
 app.post('/api/milestones/:mid/authorize', limit(20), h(async (req, res) => {

@@ -9,7 +9,7 @@
     "node": ">=20"
   },
   "scripts": {
-    "dev": "concurrently -k -n api,web -c cyan,magenta \"tsx watch server/dev.ts\" \"vite\"",
+    "dev": "concurrently -k -n api,web -c cyan,magenta \"node --watch-path=server --import tsx server/dev.ts\" \"vite\"",
     "build": "tsc -p tsconfig.json --noEmit && vite build",
     "start": "npm run build && tsx server/dev.ts",
     "test": "vitest run",
@@ -17,6 +17,7 @@
     "eval": "tsx scripts/eval-inspector.ts"
   },
   "dependencies": {
+    "@phosphor-icons/react": "2.1.10",
     "@sparticuz/chromium": "153.0.0",
     "dotenv": "16.4.7",
     "express": "5.1.0",
