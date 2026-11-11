@@ -100,6 +100,7 @@ export function FundButton({ signed, mid, amount, onFunded, onError }: Props) {
         <div>
           <div className="title-3">Secure {usd(amount)} with PayPal</div>
           <div className="caption-5 muted">An authorization holds the money on your PayPal account. You are charged only for criteria that pass.</div>
+          <div className="caption-4 lime" style={{ marginTop: 'var(--s-50)' }}>Judging? Log in to PayPal with the sandbox buyer account from the Devpost testing instructions. It is test money.</div>
         </div>
       </div>
       <div ref={host} style={{ minHeight: 48, opacity: busy ? 0.6 : 1 }}>

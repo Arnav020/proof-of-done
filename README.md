@@ -3,6 +3,7 @@
 **Pay for work that is proven done.** Proof of Done turns a client's brief into checks an AI can verify, holds the money with a PayPal authorization, has an AI Inspector test the real deliverable in a headless browser, and captures exactly the share of the work that passed. If nothing is delivered, the authorization is voided and the client is never charged.
 
 - **Live demo:** https://proof-of-done.vercel.app (PayPal sandbox, no real money)
+- **Demo video (2:37):** https://youtu.be/VMQGqUeqCLk
 - **Architecture:** [ARCHITECTURE.md](ARCHITECTURE.md)
 - **Measured results:** [results/metrics.json](results/metrics.json)
 
@@ -99,19 +100,19 @@ Results from the committed run in [results/metrics.json](results/metrics.json) (
 
 | Measure | Result |
 |---|---|
-| Criteria judged correctly | 60 of 60 (earlier runs: 59 of 60, see below) |
+| Criteria judged correctly | 60 of 60 (some earlier runs: 59 of 60, see below) |
 | Code checks correct | 48 of 48 |
 | AI judged criteria correct | 6 of 6 (one subjective criterion has flipped in earlier runs) |
 | Pages with hidden injections flagged | 6 of 6 (off-screen div, HTML comment, white-on-white text) |
-| Clean pages wrongly flagged | 0 of 6 |
+| Clean page runs wrongly flagged | 0 of 6 (3 clean pages, each run twice) |
 | Would-pass criteria frozen on injection pages | 24 of 24 |
-| Inspection time | median 5.0 s, max 7.9 s |
+| Inspection time | median 6.9 s, max 26.5 s (varies with AI provider load; the run shown in the video had a 5.0 s median) |
 
 Two bugs were found by this evaluation and fixed with regression tests: a page with no viewport meta tag passed the phone-fit check, and the phrase "AI assistant" in normal copy was flagged as an injection. Prompt Guard alone scored the HTML-comment attack at 0.001; the pattern rules caught it, which is why both detectors run. The set is small and built by the author, so treat these as behaviour on these pages, not general accuracy.
 
 ## Security review
 
-Before submission the code was audited by an independent reviewer that had not seen it being written. It found nine real defects, all fixed with regression tests:
+Before submission the code was audited by an independent AI code-review agent that had not seen it being written. It found nine real defects, all fixed with regression tests:
 
 - **Inspector network sandbox.** All headless browser traffic (pages, subresources, redirects, workers, WebSockets) now goes through a local egress proxy ([server/egress.ts](server/egress.ts)) that resolves each host and checks the IP at connect time, allows only ports 80 and 443, and connects to that exact IP. This closes DNS rebinding and IPv6 forms that embed private IPv4 addresses (for example `[::ffff:a9fe:a9fe]`).
 - **Money.** A refund no longer causes later underpayment; capture idempotency keys include the amount and criteria; a capture whose response is lost is reconciled from PayPal's own totals; an approved order from another project can no longer be attached.
@@ -119,6 +120,8 @@ Before submission the code was audited by an independent reviewer that had not s
 
 ## Limitations
 
+- **Who gets paid.** In this demo every capture goes to the app's one PayPal sandbox merchant account, which plays the freelancer. A platform with many freelancers would name each freelancer as the payee through PayPal Multiparty (partner onboarding), so funds go straight to them; the authorize, capture, void and refund logic stays the same.
+- The demo video was recorded on a local development build of this same code; the hosted demo runs the identical flow.
 - No user accounts: whoever holds a project's signed state acts as both client and freelancer. That suits a two-sided demo in one browser; production would add sign-in so only the client can fund, approve, void or refund.
 
 - Websites only. Documents, designs and code deliverables are a roadmap item.

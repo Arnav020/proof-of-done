@@ -16,7 +16,7 @@ export function Report({ r }: { r: InspectionReport }) {
     { icon: <Browser size={18} />, label: 'Headless browser loaded the page at 1440px and 390px', value: `${(r.durationMs / 1000).toFixed(1)}s total` },
     {
       icon: <ShieldWarning size={18} className={r.injection.flagged ? 'coral' : ''} />,
-      label: `Injection guard model scanned ${r.injection.segmentsScanned} text segments, including ${r.facts.hiddenSegments} hidden`,
+      label: `Rules scanned all ${r.injection.segmentsScanned} text segments (${r.facts.hiddenSegments} hidden); guard model checked the most suspicious`,
       value: guardScore === null ? 'guard offline, rules only' : `max risk ${guardScore.toFixed(3)}`,
     },
     { icon: <Code size={18} />, label: 'Code checks (the AI cannot override these)', value: `${code.filter((d) => d.pass).length}/${code.length} passed` },

@@ -120,6 +120,7 @@ export function MilestonePanel({ signed, m, role, report, busy, demoBase, onFund
                 Authorization <span className="mono">{m.payment.authorizationId}</span> holds{' '}
                 <span className="mono">{usd((m.payment.authorizedAmount ?? 0) - m.payment.captured)}</span> on the client's PayPal account.
                 {m.payment.captured > 0 ? ` ${usd(m.payment.captured)} already captured for verified work.` : ' Nothing has been charged yet.'}
+                {' '}PayPal honours an authorization for 3 days and allows capture for up to 29.
               </div>
             </div>
             {role === 'client' && open && (

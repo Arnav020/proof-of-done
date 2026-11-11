@@ -58,7 +58,7 @@ function ProofStrip() {
   const r = results;
   const stats = [
     { v: `${r.injectionPagesFlagged.value} / ${r.injectionPagesFlagged.total}`, l: 'test runs with hidden AI-reviewer instructions caught' },
-    { v: `${r.injectionFalsePositives.value} / ${r.injectionFalsePositives.total}`, l: 'clean pages wrongly flagged' },
+    { v: `${r.injectionFalsePositives.value} / ${r.injectionFalsePositives.total}`, l: 'clean page runs wrongly flagged' },
     { v: `${r.codeCheckAccuracy.correct} / ${r.codeCheckAccuracy.total}`, l: 'code checks judged correctly' },
     { v: `${(r.inspectionLatencyMs.median / 1000).toFixed(1)} s`, l: 'median inspection, browser to verdict' },
   ];
@@ -290,7 +290,7 @@ export function Intro({ onStart, hasProject }: { onStart: () => void; hasProject
       <TaglineReveal />
       <Steps />
       <section className="wrap cta-end">
-        <h2 className="heading-3">See it decide with real money movement.</h2>
+        <h2 className="heading-3">See it decide with real PayPal sandbox calls.</h2>
         <p className="body-3 muted">Fund a milestone with the PayPal sandbox, submit a delivery, and watch the Inspector release exactly what passed.</p>
         <button className="btn btn-primary" onClick={onStart}>
           {hasProject ? 'Continue your project' : 'Try a sample project'} <ArrowRight size={18} weight="bold" />

@@ -21,7 +21,7 @@ export function nextStep(m: M, role: Role, total: number, setRole: (r: Role) => 
   }
   if (!funded) {
     return role === 'client'
-      ? { n: 1, title: 'Secure this milestone with PayPal', text: `Click Pay with PayPal below and approve as the sandbox buyer. ${usd(m.amount)} is held on your account, not charged.` }
+      ? { n: 1, title: 'Secure this milestone with PayPal', text: `Click Pay with PayPal below and approve with the sandbox buyer login (judges: see the Devpost testing instructions). ${usd(m.amount)} is held, not charged.` }
       : { n: 1, title: 'Waiting for the client to fund this milestone', text: 'Work starts once PayPal holds the money.', action: { label: 'Switch to Client to fund it', run: () => setRole('client') } };
   }
   if (held.length) {

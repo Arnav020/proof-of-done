@@ -40,9 +40,24 @@ export function segmentsOf(f: PageFacts): Segment[] {
  * and the visible text: Llama Prompt Guard 2 (Groq) and pattern rules. Either one flags the page.
  * Hidden text gets a lower guard threshold, since text addressed to an AI has no legitimate reason to be invisible.
  */
+const SUSPICIOUS = /\b(ai|llm|model|review(er)?|grader|judge|inspector|instruction|ignore|disregard|criteria|criterion|approve|passed|release|payment|system)\b/i;
+
+/**
+ * Orders segments for the guard model: anything that reads like it talks to a reviewer first, then text a human
+ * cannot see (hidden, comment, attribute), then visible text. A page padded with harmless hidden spans can no longer
+ * push a real instruction out of the guard's budget (found by the Stage 3 review).
+ */
+export function prioritize(segs: Segment[]): Segment[] {
+  const rank = (s: Segment) => (SUSPICIOUS.test(s.text) ? 0 : s.where === 'visible text' ? 2 : 1);
+  return segs.map((s, i) => ({ s, i })).sort((a, b) => rank(a.s) - rank(b.s) || a.i - b.i).map((x) => x.s);
+}
+
 export async function scanForInjection(f: PageFacts): Promise<InjectionResult> {
-  // Groq's free tier allows about 30 requests a minute, so the guard sees at most 10 segments, scanned in parallel.
-  const scanned = segmentsOf(f).slice(0, 10);
+  const all = segmentsOf(f);
+  // Pattern rules are free, so they run over every segment.
+  const heurSeg = all.find((s) => PATTERNS.some((p) => p.test(s.text)));
+  // Groq's free tier allows about 30 requests a minute, so the guard model sees the 10 most suspicious segments.
+  const scanned = prioritize(all).slice(0, 10);
   const scores = await Promise.all(scanned.map((s) => guardScore(s.text).catch(() => null)));
   const guardUp = scores.some((s) => s !== null);
 
@@ -54,20 +69,19 @@ export async function scanForInjection(f: PageFacts): Promise<InjectionResult> {
     const threshold = scanned[i].where === 'visible text' ? 0.9 : 0.6;
     if (score >= threshold && (!guardHit || score > guardHit.score)) guardHit = { i, score };
   });
-  const heurIdx = scanned.findIndex((s) => PATTERNS.some((p) => p.test(s.text)));
-  const heuristicHit = heurIdx >= 0;
-  const hitIdx = guardHit ? (guardHit as { i: number }).i : heurIdx;
+  const heuristicHit = !!heurSeg;
+  const hit = guardHit ? scanned[(guardHit as { i: number }).i] : heurSeg;
 
   if (!guardHit && !heuristicHit) {
-    return { flagged: false, guardScore: best, heuristicHit: false, method: 'none', segmentsScanned: scanned.length };
+    return { flagged: false, guardScore: best, heuristicHit: false, method: 'none', segmentsScanned: all.length };
   }
   return {
     flagged: true,
     guardScore: best,
     heuristicHit,
-    where: scanned[hitIdx].where,
-    snippet: scanned[hitIdx].text.slice(0, 220),
+    where: hit!.where,
+    snippet: hit!.text.slice(0, 220),
     method: guardHit && heuristicHit ? 'prompt-guard + heuristic' : guardHit ? 'prompt-guard' : 'heuristic',
-    segmentsScanned: scanned.length,
+    segmentsScanned: all.length,
   };
 }
