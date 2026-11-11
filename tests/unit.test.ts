@@ -207,6 +207,7 @@ describe('regressions', () => {
   it('client token never sends localhost as a domain (PayPal rejects it: invalid_domain)', () => {
     expect(clientTokenBody('localhost').getAll('domains[]')).toEqual([]);
     expect(clientTokenBody('127.0.0.1').getAll('domains[]')).toEqual([]);
+    expect(clientTokenBody('proof-of-done.localhost').getAll('domains[]')).toEqual([]);
     expect(clientTokenBody('proof-of-done.vercel.app').getAll('domains[]')).toEqual(['proof-of-done.vercel.app']);
   });
 });

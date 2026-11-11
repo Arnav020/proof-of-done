@@ -117,7 +117,7 @@ export default function App() {
       update(next);
       const cap = s.capture as { id: string; amount: number; final: boolean } | null;
       if (cap) ok(`PayPal captured ${usd(cap.amount)} for the criteria that passed (capture ${cap.id}${cap.final ? ', final' : ''}).`);
-      else if (r.report.injection.flagged) fail('Manipulation attempt detected. Nothing was captured; AI judged criteria are held for review.');
+      else if (r.report.injection.flagged) fail('Manipulation attempt detected. Payment for this milestone is frozen until the client reviews each item.');
       else ok('Inspection done. No new criteria passed, so nothing new was captured.');
     } catch (e) {
       fail(e instanceof Error ? e.message : 'Inspection failed.');

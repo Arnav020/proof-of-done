@@ -28,7 +28,7 @@ export async function accessToken(): Promise<string> {
 export function clientTokenBody(domain: string): URLSearchParams {
   const body = new URLSearchParams({ grant_type: 'client_credentials', response_type: 'client_token', intent: 'sdk_init' });
   // PayPal rejects "localhost" and bare IPs as token domains, so bind only real hostnames (the deployed site).
-  if (domain.includes('.') && !/^[\d.]+$/.test(domain)) body.append('domains[]', domain);
+  if (domain.includes('.') && !/^[\d.]+$/.test(domain) && !domain.endsWith('.localhost')) body.append('domains[]', domain);
   return body;
 }
 
